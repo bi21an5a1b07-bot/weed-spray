@@ -1,0 +1,10 @@
+# Locked YOLO map. bot_files/weeds_class-map.md
+# nc: 3. Never renumber 0/1/2. Turf is unlabeled background, not a class.
+path: dataset
+train: images/train
+val: images/val
+
+names:
+  0: dandelion
+  1: clover
+  2: thistle

@@ -1,0 +1,74 @@
+[project]
+name = "weed-spray"
+version = "0.1.0"
+description = "Backyard PX4 spot-spray ground station (SITL first)"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.32",
+  "mavsdk>=2.9",
+  "httpx>=0.27",
+  "pydantic-settings>=2.4",
+  "websockets>=14.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.24", "httpx>=0.27", "ruff>=0.8"]
+yolo = ["ultralytics>=8.3"]
+
+[project.scripts]
+weed-spray = "weed_spray.backend.main:run"
+weed-spray-vision = "weed_spray.vision.main:run"
+weed-spray-accept = "weed_spray.harness.accept:main"
+weed-spray-train = "weed_spray.vision.train:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/weed_spray"]
+
+[tool.uv]
+package = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+pythonpath = ["src"]
+markers = [
+  "integration: HTTP / multi-module tests with a fake vehicle",
+]
+
+# https://docs.astral.sh/ruff/ — lint + format after every Python change (`make check`).
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+  "E",     # pycodestyle errors
+  "W",     # pycodestyle warnings
+  "F",     # pyflakes
+  "I",     # isort
+  "UP",    # pyupgrade
+  "B",     # flake8-bugbear
+  "BLE",   # blind except
+  "ASYNC", # flake8-async
+  "RET",   # flake8-return
+  "RUF",   # ruff-specific
+]
+ignore = [
+  "E501",  # line length is the formatter's job
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["weed_spray"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"

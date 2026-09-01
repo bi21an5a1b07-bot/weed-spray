@@ -1,0 +1,9 @@
+# MediaMTX: one publisher path `cam` on TCP 8554.
+# ffmpeg in compose.yaml loops media/smoke.mp4 to rtsp://127.0.0.1:8554/cam.
+logLevel: warn
+rtspAddress: :8554
+playback: no
+
+paths:
+  cam:
+    source: publisher

@@ -1,0 +1,51 @@
+# weed-spray SITL — PX4 SIH + file RTSP only.
+# Contract: bot_files/loop.md
+# Host network so UDP 14540 lands on WSL. One vehicle.
+# Do not add images beyond this file.
+
+services:
+  px4:
+    image: px4io/px4-sitl:latest
+    container_name: weed-spray-px4
+    network_mode: host
+    environment:
+      PX4_SIM_MODEL: sihsim_quadx
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
+  mediamtx:
+    image: bluenviron/mediamtx:latest
+    container_name: weed-spray-mediamtx
+    network_mode: host
+    volumes:
+      - ./sitl/mediamtx.yml:/mediamtx.yml:ro
+    command: ["/mediamtx.yml"]
+    restart: unless-stopped
+
+  rtsp-pub:
+    image: mwader/static-ffmpeg:7.1
+    container_name: weed-spray-rtsp-pub
+    network_mode: host
+    depends_on:
+      - mediamtx
+    volumes:
+      - ./media:/media:ro
+    restart: on-failure
+    command:
+      - -hide_banner
+      - -loglevel
+      - warning
+      - -re
+      - -stream_loop
+      - "-1"
+      - -i
+      - /media/smoke.mp4
+      - -an
+      - -c:v
+      - copy
+      - -f
+      - rtsp
+      - -rtsp_transport
+      - tcp
+      - rtsp://127.0.0.1:8554/cam

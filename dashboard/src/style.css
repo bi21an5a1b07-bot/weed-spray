@@ -1,0 +1,26 @@
+/* Compact dark operator UI for the localhost GCS. Layout only; no animation. */
+:root {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  color: #e8edf2;
+  background: #121418;
+}
+body { margin: 0; }
+main { max-width: 960px; margin: 0 auto; padding: 1.25rem; }
+h1 { font-size: 1.25rem; font-weight: 600; margin: 0 0 0.75rem; }
+.row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0.5rem 0; }
+button, input, select {
+  font: inherit;
+  background: #1e2329;
+  color: inherit;
+  border: 1px solid #3a424c;
+  border-radius: 6px;
+  padding: 0.4rem 0.7rem;
+}
+button:hover { background: #2a3139; cursor: pointer; }
+button.kill { background: #5c1c1c; border-color: #a33; }
+button.kill:hover { background: #7a2424; }
+label { display: flex; flex-direction: column; font-size: 0.8rem; gap: 0.2rem; }
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+th, td { text-align: left; padding: 0.35rem 0.5rem; border-bottom: 1px solid #2a3139; }
+.meta { color: #9aa3ad; font-size: 0.85rem; }
+.phase { font-variant-numeric: tabular-nums; }
