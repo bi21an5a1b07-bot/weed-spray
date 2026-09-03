@@ -1,5 +1,7 @@
 # weed-spray
 
+## Proof of concept / vibe code solution.  Do not trust it.
+
 Laptop ground station for a US-hobby backyard PX4 quad. The drone lawnmower-scans a typed geofence, the operator confirms weeds on a localhost dashboard, then the vehicle visits each confirmed plant, holds 6–12 inches AGL, and pulses a 12 V household vinegar/salt pump.
 
 **SITL first.** Hardware comes later. There is no ROS and no cloud in the inner loop.
