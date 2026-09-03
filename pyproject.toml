@@ -37,7 +37,7 @@ package = true
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["src", "."]
 markers = [
   "integration: HTTP / multi-module tests with a fake vehicle",
 ]
@@ -46,7 +46,7 @@ markers = [
 [tool.ruff]
 target-version = "py311"
 line-length = 100
-src = ["src", "tests"]
+src = ["src", "tests", "scripts"]
 
 [tool.ruff.lint]
 select = [

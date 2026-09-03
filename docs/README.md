@@ -1,12 +1,12 @@
 # weed-spray documentation
 
-Laptop ground station for a backyard PX4 quad that finds dandelion, clover, and thistle and, after a human confirm, hovers 6–12 inches AGL and pulses a 12 V household vinegar/salt pump.
+Laptop ground station for a backyard PX4 quad that finds dandelion, clover, thistle, and mallow and, after a human confirm, hovers 6–12 inches AGL and pulses a 12 V household vinegar/salt pump.
 
-Normative product rules live in `agent_prompts/_shared/` and Grok Bot contracts in `bot_files/`. Grok Build session rules: [`GROK.md`](../GROK.md). This folder explains how the **code** implements those rules.
+Start at the repo [`README.md`](../README.md). Normative product rules live in `agent_prompts/_shared/` and Grok Bot contracts in `bot_files/`. Grok Build session rules: [`GROK.md`](../GROK.md). This folder explains how the **code** implements those rules.
 
 | Doc | Contents |
 |---|---|
-| [Getting started](getting-started.md) | Install, SITL up, dashboard, tests |
+| [Getting started](getting-started.md) | mise, install, SITL, dashboard, tests |
 | [Architecture](architecture.md) | Processes, ports, mission sequence |
 | [HTTP API](api.md) | Backend `:8000` and vision `:8090` |
 | [SITL](sitl.md) | Docker SIH, RTSP, accept script |

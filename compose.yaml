@@ -1,6 +1,8 @@
 # weed-spray SITL — PX4 SIH + file RTSP only.
 # Contract: bot_files/loop.md
 # Host network so UDP 14540 lands on WSL. One vehicle.
+# extra_hosts pins host.docker.internal to 127.0.0.1 so the image entrypoint
+# does not send MAVLink to the Windows Docker Desktop IP.
 # Do not add images beyond this file.
 
 services:
@@ -10,6 +12,11 @@ services:
     network_mode: host
     environment:
       PX4_SIM_MODEL: sihsim_quadx
+    # px4-entrypoint.sh rewrites mavlink -t to host.docker.internal when that
+    # name resolves (Docker Desktop). On this WSL host-network setup that IP is
+    # the Windows host, so MAVSDK on 127.0.0.1:14540 never sees HEARTBEAT.
+    extra_hosts:
+      - "host.docker.internal:127.0.0.1"
     stdin_open: true
     tty: true
     restart: unless-stopped

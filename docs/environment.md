@@ -6,6 +6,7 @@ Prefix `WEED_`. Defined in `weed_spray.backend.config.Settings`.
 |---|---|---|
 | `WEED_MAVSDK_ADDRESS` | `udpin://0.0.0.0:14540` | PX4 offboard listen address |
 | `WEED_RTSP_URL` | `rtsp://127.0.0.1:8554/cam` | Camera URL (file in SITL, Pi later) |
+| `WEED_WEBRTC_URL` | `/cam/` | Same-origin camera path (Vite proxies to MediaMTX `:8889`) |
 | `WEED_VISION_URL` | `http://127.0.0.1:8090` | Injector |
 | `WEED_HTTP_HOST` | `127.0.0.1` | Backend bind |
 | `WEED_HTTP_PORT` | `8000` | Backend port |

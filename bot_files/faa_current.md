@@ -4,13 +4,13 @@
 
 **No registration or TRUST was filed** as part of writing this snapshot. Grok Bots must never arm, takeoff, or send MAVLink to a real aircraft.
 
-**Date checked:** 2026-08-30 (America/Denver)
+**Date checked:** 2026-09-01 (America/Boise / America/Denver)
 
 **Project facts this snapshot assumes (locked):** US hobby backyard, VLOS, under 5,000 sq ft lawn; recreational operation, no Part 107 assumed; PX4 quad, likely over 250 g when finished, under 55 lb; human confirms every spray; RC transmitter in hand whenever motors can spin; household vinegar/salt via 12V pump, not commercial herbicide in v1; stay on own turf inside a geofence; do not spray people, pets, garden beds, or anything outside the geofence.
 
 ---
 
-## Primary-source URLs (fetched 2026-08-30)
+## Primary-source URLs (fetched 2026-09-01)
 
 | Source | URL | Page title / note |
 | --- | --- | --- |
@@ -23,8 +23,8 @@
 | FAA | https://www.faa.gov/uas/getting_started/remote_id | Remote Identification of Drones |
 | FAA | https://www.faa.gov/uas/advanced_operations/dispensing_chemicals | Dispensing Chemicals and Agricultural Products (Part 137) with UAS (last updated 2026-05-05) |
 | FAA portal | https://faadronezone.faa.gov → https://faadronezone-access.faa.gov | FAADroneZone (registration / services portal). Describe only; do not file. |
-| US Code | https://uscode.house.gov/view.xhtml?req=granuleid:USC-prelim-title49-section44809&num=0&edition=prelim | 49 USC 44809 — Exception for limited recreational operations of unmanned aircraft (text in effect 2026-08-29) |
-| eCFR | https://www.ecfr.gov/current/title-14/chapter-I/subchapter-G/part-137 | 14 CFR Part 137 — Agricultural Aircraft Operations (eCFR as of 2026-08-27) |
+| US Code | https://uscode.house.gov/view.xhtml?req=granuleid:USC-prelim-title49-section44809&num=0&edition=prelim | 49 USC 44809 — Exception for limited recreational operations of unmanned aircraft (text in effect 2026-09-01) |
+| eCFR | https://www.ecfr.gov/current/title-14/chapter-I/subchapter-G/part-137 | 14 CFR Part 137 — Agricultural Aircraft Operations (eCFR as of 2026-08-28) |
 | eCFR | https://www.ecfr.gov/current/title-14/part-137/section-137.3 | 14 CFR 137.3 — Definition of terms |
 | eCFR | https://www.ecfr.gov/current/title-14/chapter-I/subchapter-C/part-48 | 14 CFR Part 48 — Registration and Marking Requirements for Small Unmanned Aircraft |
 | EPA | https://www.epa.gov/minimum-risk-pesticides/what-pesticide | What is a Pesticide? (last updated 2026-01-29) |
@@ -83,7 +83,7 @@ eCFR: no person may operate an eligible small UAS unless registered **or** “th
 
 **Project flag:** a finished flyable spray quad (frame + battery + tank + pump + payload liquid) will **almost certainly exceed 250 g / 0.55 lb on takeoff.** Recreational registration + external marking + carrying proof therefore apply **unless the operator actually weighs the ready-to-fly aircraft (everything on board / attached) under 0.55 lb.** Do not assume “maybe under 250 g.” Weigh it. This snapshot did **not** file registration.
 
-**AUW from @parts (2026-08-30, paper, no scale):** S500 + 4S 2200 stack about **1.5–1.7 kg**, wet 250 ml tank on top. Over 250 g either way. Recreational registration + marking + Remote ID apply until a scale says otherwise. Still no filing from this Bot.
+**AUW from bom/current.csv (2026-09-01 monthly check, paper, no scale):** BOM still S500 Stretch-X + Kakute H7 Mini + Holybro M10 + PMW3901 + TFmini-S + Pi 4 2GB + CSI cam + 4S 2200 pack + ~250 ml tank + 12V pump + dual Matek BECs. Paper stack remains about **1.5–1.7 kg** ready-to-fly with wet tank — **well above** 250 g / 0.55 lb either dry or wet. No new crossing of the registration line this month (already over on 2026-08-30). Recreational registration + marking + Remote ID apply until a scale says otherwise. Still no filing from this Bot.
 
 ### Remote ID (follows registration)
 
@@ -275,4 +275,23 @@ Optional software that **helps** the operator follow the pages, without pretendi
 
 ---
 
-*Snapshot author: research pass 2026-08-30 America/Denver. Primary sources only. No registration, no TRUST, no spray, no flight.*
+## Monthly comparison (2026-09-01 vs 2026-08-30)
+
+Re-fetched FAA.gov recreational / registration / TRUST / Remote ID / B4UFLY / Getting Started / drone FAQ / Part 137 UAS dispensing pages, EPA pesticide / 25(b) / cleaning-product FIFRA pages, and eCFR 14 CFR 137.3, Part 48, and 40 CFR 152.15.
+
+| Check | Result |
+| --- | --- |
+| Registration threshold | Unchanged: 250 g / 0.55 lb on takeoff including everything aboard ([FAA Recreational Flyers](https://www.faa.gov/uas/recreational_flyers); [14 CFR 48.15](https://www.ecfr.gov/current/title-14/chapter-I/subchapter-C/part-48)). |
+| TRUST | Unchanged: required before recreational flight; page still last updated 2026-08-21. |
+| Remote ID | Unchanged: required if the aircraft requires registration (post 2023-09-16). |
+| 44809 / Part 107 framing | Unchanged: agricultural spraying still a non-recreational Part 91 example; when in doubt, assume Part 107. Recreational page still last updated 2026-03-18. |
+| Part 137 / 137.3 | Unchanged: purpose-based economic poison / substance intended for pest control definitions; UAS dispensing page still last updated 2026-05-05. |
+| EPA vinegar / FIFRA | Unchanged: vinegar not a 25(b) active; 40 CFR 152.15 still distribute-or-sell framed; cleaning-product page still last updated 2026-07-06. |
+| B4UFLY | Unchanged provider list; page still last updated 2026-08-25. |
+| BOM AUW vs 250 g | Still **over** (S500 + Pi 4 + 4S + wet tank paper ~1.5–1.7 kg). Did **not** newly cross 250 g this month. |
+
+**Operator notify?** No. No primary-source requirement change. No new 250 g crossing. Per monthly routine: stay silent.
+
+---
+
+*Snapshot author: monthly rules check 2026-09-01 America/Boise. Prior baseline 2026-08-30. Primary sources only. No registration, no TRUST, no spray, no flight.*

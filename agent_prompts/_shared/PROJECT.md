@@ -4,7 +4,7 @@ Authoritative for every Grok Bot on this project. If a chat disagrees with this 
 
 ## What we are building
 
-Laptop ground station talks to a backyard quad over MAVLink (PX4). A camera on the drone streams WiFi RTSP to the laptop. YOLO on the laptop finds dandelion, clover, and thistle. The drone scans the whole lawn, the operator confirms targets, then the drone visits each confirmed weed, hovers 6–12 inches AGL using a downward rangefinder, and pulses a 12V pump of household vinegar/salt.
+Laptop ground station talks to a backyard quad over MAVLink (PX4). A camera on the drone streams WiFi RTSP to the laptop. YOLO on the laptop finds dandelion, clover, thistle, and mallow (mallow includes ground ivy). The drone scans the whole lawn, the operator confirms targets, then the drone visits each confirmed weed, hovers 6–12 inches AGL using a downward rangefinder, and pulses a 12V pump of household vinegar/salt.
 
 ## Software (this repo)
 
@@ -24,7 +24,7 @@ Laptop ground station talks to a backyard quad over MAVLink (PX4). A camera on t
 1. Operator sets a typed rectangle geofence in SITL (walk-the-fence GPS later)
 2. Arm/takeoff: either RC-first or dashboard-first (operator choice)
 3. Drone lawnmower-scans the box
-4. Laptop records detections (classes: `dandelion`, `clover`, `thistle`)
+4. Laptop records detections (classes: `dandelion`, `clover`, `thistle`, `mallow`)
 5. Operator confirms a subset
 6. Drone visits each confirmed target, lidar-hold 6–12 in AGL, pulse pump, next
 7. RTL / land. Pump off on any failsafe, disconnect, or geofence breach

@@ -30,7 +30,7 @@ Scan is **2.0 m AGL**, not 6–12 in (`px4/offboard.md`).
 
 ## detections[]
 
-`id`, `t`, `class` (`dandelion` | `clover` | `thistle`), `conf`, `x_m`/`y_m` or `lat`/`lon`. Injector is a v1 pass.
+`id`, `t`, `class` (`dandelion` | `clover` | `thistle` | `mallow`), `conf`, `x_m`/`y_m` or `lat`/`lon`. Injector is a v1 pass.
 
 ## confirms[]
 

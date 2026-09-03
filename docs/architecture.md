@@ -3,6 +3,7 @@
 ```
 Operator browser (:8080)
         │  /api  +  /ws
+        │  iframe /cam/  (Vite → MediaMTX :8889)
         ▼
 Python backend (:8000) ── MAVSDK UDP 14540 ──► PX4 SIH (Docker, host net)
         │                                         pump: set_actuator(1)
@@ -10,6 +11,7 @@ Python backend (:8000) ── MAVSDK UDP 14540 ──► PX4 SIH (Docker, host n
         └── RTSP pull (later YOLO)  rtsp://127.0.0.1:8554/cam
                                           ▲
                          ffmpeg loops media/*.mp4 → MediaMTX
+                         HLS :8888  WebRTC :8889
 ```
 
 Nothing in the app leaves localhost. There is no ROS and no cloud LLM in the inner loop.
@@ -19,7 +21,7 @@ Nothing in the app leaves localhost. There is no ROS and no cloud LLM in the inn
 | Process | Where | Port |
 |---|---|---|
 | `px4io/px4-sitl` `sihsim_quadx` | Docker, `network_mode: host` | UDP 14540 offboard, 14550 GCS |
-| MediaMTX | Docker | TCP 8554 RTSP |
+| MediaMTX | Docker | TCP 8554 RTSP, 8888 HLS, 8889 WebRTC |
 | ffmpeg publisher | Docker | publishes `cam` |
 | `weed-spray` | host, uv | HTTP 8000 |
 | `weed-spray-vision` | host, uv | HTTP 8090 |

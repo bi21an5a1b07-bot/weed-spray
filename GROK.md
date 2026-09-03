@@ -8,7 +8,7 @@ Product spec: [`agent_prompts/_shared/PROJECT.md`](agent_prompts/_shared/PROJECT
 
 Laptop ground station for a US-hobby backyard quad. PX4 over MAVLink. Scan the lawn, human confirms weeds, then hover 6-12 in AGL and pulse a 12 V vinegar/salt pump. **SITL first** (Docker SIH on this WSL box). Hardware later.
 
-Python 3.11 (uv) + TypeScript dashboard. **No ROS. No cloud in the inner loop.** Localhost/LAN only.
+Python 3.11 + TypeScript dashboard, tools via [mise](https://mise.jdx.dev/walkthrough.html). **No ROS. No cloud in the inner loop.** Localhost/LAN only.
 
 ## Hard rules
 
@@ -18,7 +18,7 @@ Python 3.11 (uv) + TypeScript dashboard. **No ROS. No cloud in the inner loop.**
 - Arm, Offboard, or pulse a pump on **real** hardware from this agent unless the operator is on the RC and asked for that step.
 - Invent PX4 parameters. Do not write `COM_RCL_EXCEPT` bit 2 or disable `NAV_RCL_ACT`. Unknown enums stay unknown ([`bot_files/px4_offboard.md`](bot_files/px4_offboard.md)).
 - Treat GPS / `vehicle_local_position.z` as AGL. SIH has no `DISTANCE_SENSOR`; hover samples log `missing` and accept step 7 **fails**.
-- Renumber YOLO classes or add a fourth class. Frozen: `dandelion=0`, `clover=1`, `thistle=2`. Turf/crabgrass/`other_weed` is unlabeled background.
+- Renumber YOLO classes 0/1/2. Map: `dandelion=0`, `clover=1`, `thistle=2`, `mallow=3` (mallow includes ground ivy). Turf/crabgrass/plantain/`other_weed` is unlabeled background.
 - Auto-download public weed archives (licenses: CC-BY-NC, ShareAlike, custom NC).
 - Drop TFmini-S or PMW3901 to hit the $500 cap. Report the dollar gap (`bot_files/parts_cap.md`, ~$815).
 - Treat `GET /preflight` or SITL as FAA/Part 137 authorization. Not legal advice.
@@ -31,10 +31,22 @@ Python 3.11 (uv) + TypeScript dashboard. **No ROS. No cloud in the inner loop.**
 - Offboard: bind `udpin://0.0.0.0:14540`. Setpoint **before** `offboard.start()`. NED z is down (`hover` down = `-0.22`).
 - RC in the pilot's hands whenever motors can spin (hardware). SITL may be dashboard-first.
 - Cite `bot_files/` when changing flight, pump, class map, or accept behavior.
+- Install host language tools with **mise** (`mise.toml`). Do not brew/nvm/apt a second Python or Node for this repo.
+- Obsidian: read the vault-root `Grok.md` first and follow it (Odysseas Zettelkasten). Problem/solution captures go in `1 - Rough Notes` (inbox). Do not skip to `6 - Wiki` unless extracting a reusable claim. Do not mention internal tooling in vault notes. Do not recreate `wiki/concepts/` trees.
 
 ## Grok Bot vs this workspace
 
 Grok **Build** writes this git repo. Grok **Bot** VMs have a separate `/workspace`. Bot contracts only affect this tree after the operator copies them into [`bot_files/`](bot_files/). Do not assume Bot files are already here.
+
+A **user crontab** (not Grok) hashes `bot_files/` every 15 minutes: `scripts/bot_files_cron.sh`. Unchanged ticks only append `var/bot_files-cron.log`. A delta writes `var/bot_files-pending` for a later Grok session. Do not run this check as a Grok `/loop`.
+
+```bash
+uv run python scripts/bot_files_delta.py          # exit 1 if added/changed/removed
+uv run python scripts/bot_files_delta.py --commit # after you implemented the delta
+crontab -l                                        # should list bot_files_cron.sh
+```
+
+How to ingest a pending delta: [`.grok/rules/bot-files.md`](.grok/rules/bot-files.md). First run with no `var/bot_files-state.json` records a baseline. After ingest: `make check`.
 
 ## Layout
 
@@ -47,20 +59,42 @@ Grok **Build** writes this git repo. Grok **Bot** VMs have a separate `/workspac
 | `tests/` | pytest + `FakeVehicle` — **no live PX4** |
 | `compose.yaml` | PX4 SIH + MediaMTX + ffmpeg only |
 | `bot_files/` | Normative Bot contracts |
+| `mise.toml` | Pin Python 3.11, uv, Node 26 |
 | `docs/` | Human docs; [`docs/code-reference.md`](docs/code-reference.md) for functions |
+
+## Dev tools (mise)
+
+[`mise.toml`](mise.toml) is the pin file. Walkthrough: https://mise.jdx.dev/walkthrough.html
+
+```bash
+mise trust && mise install    # python@3.11, uv@latest, node@26
+mise run install              # uv sync --extra dev + dashboard npm
+```
+
+| Layer | Tool | Do |
+|---|---|---|
+| Host runtimes | Python 3.11, uv, Node 26 | `mise install` only |
+| Python packages | FastAPI, MAVSDK, pytest, Ruff | `uv sync --extra dev` (`pyproject.toml`) |
+| Dashboard packages | React, Vite | `npm --prefix dashboard install` |
+| YOLO (optional) | ultralytics | `uv sync --extra yolo` — not mise; dataset is empty |
+| Sim / video | Docker, host ffmpeg | apt/Docker — **not** mise |
+
+Do not add FastAPI, Ruff, or npm packages to `[tools]` in `mise.toml`. Do not install a second Node via nvm for this project. Prefer `mise exec -- …` or `mise run <task>` when the shell is not mise-activated.
 
 ## Commands
 
 ```bash
-uv sync --extra dev
+mise trust && mise install && mise run install
 make sitl                 # PX4 SIH + RTSP file loop (Docker)
 uv run weed-spray-vision  # :8090
 uv run weed-spray         # :8000
 (cd dashboard && npm run dev)  # :8080
 
 make check                # ruff check + ruff format --check + pytest
+mise run check            # same, under mise env
 make lint / make fmt
-make accept               # live 10-step loop.md; needs SITL + apps
+make accept               # live loop.md grade (needs SITL + apps)
+mise run accept           # same
 ```
 
 Python gate after every Python edit:
@@ -81,7 +115,7 @@ Ruff config is `[tool.ruff]` in `pyproject.toml`. Do not disable a rule to hide 
 | `bot_files/px4_actuators.md` | Actuator Set 1 = pump |
 | `bot_files/px4_offboard.md` | Sequence; params not to invent |
 | `bot_files/sitl_template.md` | `GET /run-log` JSON |
-| `bot_files/weeds_class-map.md` | Frozen `nc=3` |
+| `bot_files/weeds_class-map.md` | `nc=4`; never renumber 0/1/2 |
 
 Compose images stay exactly: `px4io/px4-sitl` (`PX4_SIM_MODEL=sihsim_quadx`), `bluenviron/mediamtx`, `mwader/static-ffmpeg:7.1` (binary is `/ffmpeg`). `network_mode: host`. One vehicle.
 

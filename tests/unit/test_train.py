@@ -28,7 +28,7 @@ def test_main_empty_dataset_returns_2():
 
 def test_yaml_has_all_classes():
     text = train_mod.YAML.read_text()
-    for name in ("dandelion", "clover", "thistle"):
+    for name in ("dandelion", "clover", "thistle", "mallow"):
         assert name in text
 
 

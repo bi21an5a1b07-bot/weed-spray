@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Hls from "hls.js";
 
 /** One plant row from backend AppState (JSON key is `class`). */
 type Detection = {
@@ -17,6 +18,7 @@ type State = {
   phase: string;
   last_error: string | null;
   rtsp_url: string;
+  webrtc_url: string;
   mavsdk_address: string;
   telemetry: {
     connected: boolean;
@@ -35,6 +37,7 @@ const empty: State = {
   phase: "idle",
   last_error: null,
   rtsp_url: "",
+  webrtc_url: "",
   mavsdk_address: "",
   telemetry: {
     connected: false,
@@ -47,6 +50,36 @@ const empty: State = {
   },
   detections: [],
 };
+
+/** Same-origin HLS of the MediaMTX file loop. WebRTC ICE fails from Windows→WSL. */
+function CamMonitor({ rtsp }: { rtsp: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const src = "/hls/cam/index.m3u8";
+    if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      video.src = src;
+      return;
+    }
+    if (!Hls.isSupported()) return;
+    const hls = new Hls({ lowLatencyMode: true });
+    hls.loadSource(src);
+    hls.attachMedia(video);
+    return () => {
+      hls.destroy();
+    };
+  }, []);
+  return (
+    <section className="cam">
+      <h2>Camera</h2>
+      <video ref={videoRef} muted autoPlay playsInline controls />
+      <p className="meta">
+        HLS /hls/cam/ · RTSP {rtsp || "rtsp://127.0.0.1:8554/cam"}
+      </p>
+    </section>
+  );
+}
 
 /** POST/GET the backend via the Vite ``/api`` proxy (strips the prefix). */
 async function api(path: string, init?: RequestInit) {
@@ -136,6 +169,8 @@ export default function App() {
       </p>
       {preflight ? <p className="meta">{preflight}</p> : null}
       {error ? <p className="meta">{error}</p> : null}
+
+      <CamMonitor rtsp={state.rtsp_url} />
 
       <div className="row">
         <label>

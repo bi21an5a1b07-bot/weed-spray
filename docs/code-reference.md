@@ -24,6 +24,7 @@ Pydantic settings. `env_prefix="WEED_"`, unknown env keys ignored. Does **not** 
 |---|---|---|
 | `mavsdk_address` | `udpin://0.0.0.0:14540` | MAVSDK bind; PX4 sends offboard traffic here |
 | `rtsp_url` | `rtsp://127.0.0.1:8554/cam` | Camera URL (file loop in SITL) |
+| `webrtc_url` | `/cam/` | Same-origin camera path; Vite proxies to MediaMTX `:8889` |
 | `vision_url` | `http://127.0.0.1:8090` | Injector base URL |
 | `http_host` / `http_port` | `127.0.0.1` / `8000` | Backend bind |
 | `scan_agl_m` | `2.0` | Lawnmower altitude (metres) |
@@ -94,7 +95,7 @@ Last MAVSDK snapshot: `connected`, `armed`, `in_air`, `lat`, `lon`, `relative_al
 
 ### `class AppState`
 
-Full GCS state from `GET /state` and `/ws`: phase, telemetry, fence, detections, confirms, last_error, pump_pulses, pump_off_events, hover_agl_m, phase_log, rtsp_url, mavsdk_address, arm_source, t_start, kind (`sitl`\|`hw`).
+Full GCS state from `GET /state` and `/ws`: phase, telemetry, fence, detections, confirms, last_error, pump_pulses, pump_off_events, hover_agl_m, phase_log, rtsp_url, webrtc_url, mavsdk_address, arm_source, t_start, kind (`sitl`\|`hw`).
 
 ---
 
@@ -323,13 +324,13 @@ Frozen v1 class map. `bot_files/weeds_class-map.md`. **Do not renumber.**
 
 | Symbol | Value |
 |---|---|
-| `NAMES` | `{0: "dandelion", 1: "clover", 2: "thistle"}` |
-| `NC` | `3` |
+| `NAMES` | `{0: "dandelion", 1: "clover", 2: "thistle", 3: "mallow"}` |
+| `NC` | `4` |
 | `CLASSES` | `frozenset` of those names |
 | `NAME_TO_ID` | reverse map |
 | `YAML_RELATIVE` | `"weeds/weeds.yaml"` |
 
-Turf, dirt, crabgrass, and “other_weed” are unlabeled background, not a fourth class.
+Turf, dirt, crabgrass, plantain, and “other_weed” are unlabeled background. Id 3 is mallow (includes ground ivy).
 
 ---
 
@@ -339,7 +340,7 @@ Detection injector / YOLO stub on `:8090`. Injected boxes are the v1 pass. In-me
 
 ### `class Detection`
 
-One injected plant. `class` must be dandelion, clover, or thistle.
+One injected plant. `class` must be in `CLASSES` (dandelion, clover, thistle, mallow).
 
 #### `Detection.known_class(value) -> str`
 
@@ -442,6 +443,10 @@ Step 7 fails when `hover_agl_m` is `missing` (expected on SIH). Step 8 requires 
 
 `fetch('/api' + path)` with JSON headers. Throws `Error` with path, status, and body text on non-OK.
 
+### `CamMonitor({ src, rtsp })`
+
+`<video>` + `hls.js` on `/hls/cam/index.m3u8`. Vite proxies `/hls` to MediaMTX `:8888`.
+
 ### `function App()`
 
 Localhost GCS: fence form, arm-source select, confirm/reject, visit, RTL, people hold, kill. Subscribes to `/ws`; falls back to polling `/api/state`.
@@ -494,14 +499,72 @@ Clears `weed_spray.vision.main._boxes` before and after every test so injector s
 | File | Covers |
 |---|---|
 | `tests/unit/test_geo.py` | NED→lat/lon, clockwise fence corners, lawnmower spacing |
-| `tests/unit/test_classes.py` | Frozen `nc=3` map matches `weeds.yaml`; no crabgrass |
+| `tests/unit/test_classes.py` | Class map matches `weeds.yaml`; no crabgrass |
 | `tests/unit/test_distance.py` | `distance_reading_m` NaN / ≤0 / junk → `None` |
 | `tests/unit/test_models.py` | `"class"` alias, confirm ids+decisions, pump-off type |
 | `tests/unit/test_mission.py` | Inject/confirm/reject, unconfirmed never sprayed, RC vs dashboard, kill/people, failsafe idle skip |
 | `tests/unit/test_train.py` | Empty dataset count; `--list-sources` does not download |
 | `tests/unit/test_harness.py` | Last-run table order; `rtsp_open` false on closed port |
 | `tests/unit/test_contracts.py` | Compose ports, dashboard safety strings, `bot_files/` present |
+| `tests/unit/test_extract_clip_inbox.py` | Inbox dest guards; skip-if-present; no dataset writes |
+| `tests/unit/test_promote_inbox.py` | Split by image; copy jpg+txt; skip unlabeled |
 | `tests/integration/test_backend_api.py` | ASGI FastAPI + `FakeVehicle`: connect/fence/inject/confirm/visit/kill |
 | `tests/integration/test_vision_api.py` | Inject/get/delete; 422 on unknown class |
 
 No live PX4 in pytest. Live grading is `weed-spray-accept` ([testing.md](testing.md)).
+
+---
+
+## `scripts/extract_clip_inbox.py`
+
+Unlabeled 1 fps JPEG dump from a lawn clip into `weeds/inbox/<stem>/`. Does not box, split train/val, or train.
+
+### `default_clip(media) -> Path | None`
+
+First existing of `backyard_weeds.MOV`, `.mov`, `.mp4` under `media/`.
+
+### `inbox_dest(clip, inbox) -> Path`
+
+`inbox / clip.stem.lower()`.
+
+### `dest_error(dest, inbox, dataset) -> str | None`
+
+Error if `dest` is not an inbox subfolder or sits under `weeds/dataset/`.
+
+### `existing_frames(dest) -> list[Path]`
+
+`frame_*.jpg` / `.jpeg` in `dest`.
+
+### `ffmpeg_argv(clip, dest, fps, quality) -> list[str]`
+
+Host `ffmpeg`: video only, `fps=`, `-q:v`, `frame_%04d.jpg`.
+
+### `extract(...) -> int`
+
+Skip ffmpeg when frames exist unless `--force`. Refresh `SOURCE.md`. Return 2 on dest/clip/ffmpeg failure.
+
+### `main(argv=None) -> int`
+
+CLI. `--dry-run` prints argv. `--force` replaces stills.
+
+---
+
+## `scripts/promote_inbox.py`
+
+Copy boxed inbox jpg+txt into `weeds/dataset/`. Split by image. Does not train.
+
+### `BACKYARD_VAL_FRAMES`
+
+Held-out frame numbers from the backyard clip (thistle, dandelion, mallow, turf negatives).
+
+### `assign_split(stem, source) -> str`
+
+`val` if backyard frame is in the hold-out set; else `train`. Other inbox folders → `val`.
+
+### `promote(...) -> int`
+
+Copy pairs. Skip existing unless `--force`. Return 2 if no boxed stills.
+
+### `main(argv=None) -> int`
+
+CLI. `--source` default `backyard_weeds`.

@@ -9,12 +9,13 @@ Locked to `PROJECT.md`. Do not add classes unless that file changes. Detector tr
 | 0 | `dandelion` | *Taraxacum* in turf: basal rosette, toothed leaves, yellow bloom, white seed head | Cat’s-ear / hawkweed if you cannot tell — leave unlabeled. Not crabgrass. |
 | 1 | `clover` | *Trifolium* in turf: trifoliate leaves, white or red bloom | Wood sorrel / *Oxalis*. Not “any small white flower.” |
 | 2 | `thistle` | *Cirsium* / *Carduus* in turf: spiny rosette or upright plant, purple/pink bloom | Mulch, pine cones, dried oak leaves. Not bull vs Canada as extra classes. |
+| 3 | `mallow` | Common mallow (*Malva*) and ground ivy (*Glechoma*) as **one** spray class: round palmate / kidney leaves | Spotted spurge (fine ferny mats). Not clover. |
 
-`nc: 3`. Ids are frozen. A later class would be id 3. Never renumber 0/1/2.
+`nc: 4`. Never renumber 0/1/2. Id 3 is operator-added mallow.
 
 ## Background (not a class)
 
-Turf grass, bare dirt, fence, tree, sky, hose, toys, shoes. Crabgrass, nutsedge, plantain, chickweed, “other_weed.” Anything the operator would not confirm as a spray target in v1.
+Turf grass, bare dirt, fence, tree, sky, hose, toys, shoes. Crabgrass, nutsedge, plantain, chickweed, spotted spurge, “other_weed.” Anything the operator would not confirm as a spray target.
 
 Do **not** add `background`, `grass`, or `other`. Those pixels are unlabeled.
 

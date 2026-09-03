@@ -12,9 +12,13 @@ Only these three (do not `docker pull` extras at runtime):
 
 `network_mode: host` so PX4’s UDP 14540 is the WSL host. One vehicle.
 
+The `px4io/px4-sitl` entrypoint rewrites mavlink `-t` to `host.docker.internal` whenever that name resolves (meant for Docker Desktop). On this WSL box that address is the Windows host, not loopback, so MAVSDK never sees HEARTBEAT. Compose pins `extra_hosts: host.docker.internal:127.0.0.1` so `-t` stays localhost.
+
 ## RTSP
 
 `rtsp://127.0.0.1:8554/cam` is a **file** loop (`media/smoke.mp4` is `testsrc` for connect-smoke). Replace with a lawn clip for a green vision pass. Injected boxes still pass detect-step 4.
+
+The dashboard does not play RTSP. It plays **HLS** at `/hls/cam/index.m3u8` (Vite → MediaMTX `:8888`). WebRTC `:8889` remains available but ICE from Windows→WSL often closes the peer connection.
 
 Not Gazebo RTP 5600. Not `/dev/video`.
 

@@ -1,7 +1,7 @@
 # Host-side shortcuts. `make sitl` starts Docker only (PX4 SIH + RTSP).
 # Backend / vision / dashboard stay on the host. See docs/cli.md.
 # Python gate: `make check` (ruff + pytest). See docs/testing.md.
-.PHONY: sitl sitl-down smoke-video app vision backend dashboard accept down test lint fmt check
+.PHONY: sitl sitl-down smoke-video inbox-frames promote-inbox app vision backend dashboard accept down test lint fmt check
 
 smoke-video: media/smoke.mp4
 
@@ -29,15 +29,21 @@ accept:
 
 down: sitl-down
 
+inbox-frames:
+	uv run python scripts/extract_clip_inbox.py
+
+promote-inbox:
+	uv run python scripts/promote_inbox.py
+
 lint:
-	uv run ruff check src tests
+	uv run ruff check src tests scripts
 
 fmt:
-	uv run ruff format src tests
+	uv run ruff format src tests scripts
 
 test:
 	uv run pytest -q
 
 check: lint
-	uv run ruff format --check src tests
+	uv run ruff format --check src tests scripts
 	uv run pytest -q

@@ -24,6 +24,8 @@ TypeScript + React 19 + Vite. Source: `dashboard/src/`. Localhost only.
 
 Telemetry line: phase, MAV up/down, armed, relative altitude, lidar (`missing` on SIH), pump value.
 
+Camera: `<video>` + `hls.js` on `/hls/cam/index.m3u8`. Vite proxies `/hls` to MediaMTX `:8888` and strips the `Secure` cookie so HTTP localhost can play. Direct WebRTC on `:8889` fails from a Windows browser (ICE / “peer connection closed”). RTSP `8554/cam` stays the backend/YOLO pull.
+
 On load, `GET /api/preflight` is fetched only to confirm the backend is up; the banner text is hardcoded (not legal advice). State is pushed over WebSocket `/ws`; if the socket errors, the UI polls `GET /api/state` every 500 ms.
 
 ## Types in `App.tsx`

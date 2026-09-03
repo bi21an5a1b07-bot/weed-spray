@@ -41,6 +41,7 @@ class Mission:
         self.vehicle = vehicle
         self.state = AppState(
             rtsp_url=settings.rtsp_url,
+            webrtc_url=settings.webrtc_url,
             mavsdk_address=settings.mavsdk_address,
         )
         self._run_task: asyncio.Task | None = None
@@ -68,10 +69,11 @@ class Mission:
         log.warning("failsafe %s pump off", kind)
 
     async def connect(self) -> None:
-        """Connect MAVSDK and stamp ``t_start``."""
+        """Connect MAVSDK and stamp ``t_start``. Clears a stale ``last_error``."""
         self._set_phase(MissionPhase.connecting)
         self.state.t_start = utc_now()
         await self.vehicle.connect()
+        self.state.last_error = None
         self._set_phase(MissionPhase.connected)
 
     async def set_fence(self, box: FenceBox) -> None:
@@ -189,6 +191,8 @@ class Mission:
         """After confirm: visit confirmed ids only. Errors if scan still running."""
         if self._run_task and not self._run_task.done():
             raise RuntimeError("scan still running")
+        if not self.vehicle.connected:
+            raise RuntimeError("not connected")
         self._run_task = asyncio.create_task(self._visit_then_rtl())
 
     async def _visit_then_rtl(self) -> None:

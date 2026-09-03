@@ -5,12 +5,13 @@ from pathlib import Path
 from weed_spray.vision.classes import CLASSES, NAME_TO_ID, NAMES, NC, YAML_RELATIVE
 
 
-def test_frozen_three_classes():
-    assert NC == 3
-    assert NAMES == {0: "dandelion", 1: "clover", 2: "thistle"}
-    assert CLASSES == {"dandelion", "clover", "thistle"}
+def test_class_map_ids():
+    assert NC == 4
+    assert NAMES == {0: "dandelion", 1: "clover", 2: "thistle", 3: "mallow"}
+    assert CLASSES == {"dandelion", "clover", "thistle", "mallow"}
     assert NAME_TO_ID["dandelion"] == 0
     assert NAME_TO_ID["thistle"] == 2
+    assert NAME_TO_ID["mallow"] == 3
 
 
 def test_yaml_matches_frozen_names():

@@ -2,16 +2,22 @@
 
 ## Requirements
 
-- WSL2 Ubuntu with Docker, `uv`, Node.js, `ffmpeg`
+- WSL2 Ubuntu with [mise](https://mise.jdx.dev/walkthrough.html) and Docker
+- Host `ffmpeg` (apt) for `make smoke-video`; compose already ships a static ffmpeg for RTSP
 - Optional: NVIDIA GPU for later YOLO training (`uv sync --extra yolo`)
+
+mise pins **Python 3.11**, **uv**, and **Node 26** in `mise.toml`. It does **not** install FastAPI/MAVSDK (those are `uv sync`) or React (those are `npm install` in `dashboard/`). Docker is a host daemon, not a mise tool.
 
 ## Install
 
 ```bash
 cd /home/behmann/src/grok/drone_control
-uv sync --extra dev
-(cd dashboard && npm install)
+mise trust
+mise install              # python 3.11, uv, node 26
+mise run install          # uv sync --extra dev + dashboard npm
 ```
+
+Without mise, the same Python/Node work is `uv sync --extra dev` and `(cd dashboard && npm install)` if those tools are already on PATH.
 
 ## SITL (software-in-the-loop)
 

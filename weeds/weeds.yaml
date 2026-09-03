@@ -1,5 +1,6 @@
-# Locked YOLO map. bot_files/weeds_class-map.md
-# nc: 3. Never renumber 0/1/2. Turf is unlabeled background, not a class.
+# YOLO map. bot_files/weeds_class-map.md
+# nc: 4. Never renumber 0/1/2. Id 3 is mallow (includes ground ivy).
+# Turf is unlabeled background, not a class.
 path: dataset
 train: images/train
 val: images/val
@@ -8,3 +9,4 @@ names:
   0: dandelion
   1: clover
   2: thistle
+  3: mallow

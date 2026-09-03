@@ -18,7 +18,7 @@ _boxes: list[dict[str, Any]] = []
 
 
 class Detection(BaseModel):
-    """One injected plant. ``class`` must be dandelion, clover, or thistle."""
+    """One injected plant. ``class`` must be in the class map (incl. mallow)."""
 
     id: str
     class_name: str = Field(alias="class")

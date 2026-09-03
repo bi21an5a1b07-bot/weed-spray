@@ -136,6 +136,23 @@ async def test_rc_first_waits_in_air():
 
 
 @pytest.mark.asyncio
+async def test_connect_clears_stale_last_error():
+    mission, _ = _mission()
+    mission.state.last_error = "Offboard plugin has not been initialized!"
+    await mission.connect()
+    assert mission.state.last_error is None
+    assert mission.state.phase == MissionPhase.connected
+
+
+@pytest.mark.asyncio
+async def test_visit_rejects_when_disconnected():
+    mission, vehicle = _mission()
+    vehicle.connected = False
+    with pytest.raises(RuntimeError, match="not connected"):
+        await mission.visit_now()
+
+
+@pytest.mark.asyncio
 async def test_visit_without_confirm_fails():
     mission, _ = _mission()
     await mission.connect()

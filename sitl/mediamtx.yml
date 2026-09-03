@@ -1,7 +1,20 @@
-# MediaMTX: one publisher path `cam` on TCP 8554.
-# ffmpeg in compose.yaml loops media/smoke.mp4 to rtsp://127.0.0.1:8554/cam.
+# MediaMTX: publisher path `cam`.
+# RTSP 8554 for backend/YOLO. WebRTC 8889 for the dashboard (browsers cannot play RTSP).
 logLevel: warn
 rtspAddress: :8554
+hls: yes
+hlsAddress: :8888
+hlsAllowOrigins: ["*"]
+hlsAlwaysRemux: yes
+hlsVariant: lowLatency
+webrtc: yes
+webrtcAddress: :8889
+webrtcAllowOrigins: ["*"]
+webrtcTrustedProxies: ["127.0.0.1"]
+webrtcIPsFromInterfaces: yes
+webrtcAdditionalHosts: ["127.0.0.1"]
+webrtcLocalUDPAddress: :8189
+webrtcLocalTCPAddress: :8189
 playback: no
 
 paths:

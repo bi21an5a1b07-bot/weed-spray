@@ -1,6 +1,6 @@
 # Labeling rules (v1)
 
-For boxes on `dandelion` (0), `clover` (1), `thistle` (2) only. Turf is unlabeled background. This is training hygiene, not a spray confirm.
+For boxes on `dandelion` (0), `clover` (1), `thistle` (2), `mallow` (3). Turf is unlabeled background. This is training hygiene, not a spray confirm.
 
 ## Box geometry
 
@@ -38,10 +38,18 @@ For boxes on `dandelion` (0), `clover` (1), `thistle` (2) only. Turf is unlabele
 - Mulch chunks, pine cones, and dried oak leaves are common false positives. Do not label them.
 - Do not split bull vs Canada into extra classes.
 
+### mallow
+
+- Include: common mallow (*Malva neglecta* and kin) — round palmate leaves, long petiole, crenate edge.
+- Include: ground ivy (*Glechoma hederacea*) — round/kidney crenate leaves, often creeping. **Same class** until the operator splits them.
+- Bloom vs leaf: both are class 3.
+- Spotted spurge / *Euphorbia* (fine ferny mats on dirt) is **not** mallow. Unlabeled.
+- Do not label as clover. Clover is trifoliate *Trifolium*.
+
 ## Ignore (never a class)
 
 - Turf grass, dirt, fence, trees, sky, hose, toys, shoes
-- Crabgrass, nutsedge, plantain, chickweed, “other_weed”
+- Crabgrass, nutsedge, plantain, chickweed, spotted spurge, “other_weed”
 - People, pets, garden beds (also out of mission; do not train on them as targets)
 
 ## Domain
@@ -53,6 +61,7 @@ For boxes on `dandelion` (0), `clover` (1), `thistle` (2) only. Turf is unlabele
 
 - Crabgrass / other grassy weeds scored as dandelion
 - Clover bloom vs clover leaf (model only fires on flowers)
+- Mallow vs clover vs spotted spurge
 - Thistle vs mulch / pine cone
 - Yellow flowers that are not dandelion (cat’s-ear, hawkweed, buttercup)
 - White puff seed heads vs trash / dandelion clocks

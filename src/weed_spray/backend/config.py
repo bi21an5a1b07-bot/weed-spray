@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     Attributes:
         mavsdk_address: MAVSDK bind; PX4 sends offboard traffic to UDP 14540.
         rtsp_url: Camera URL (file loop in SITL, Pi later).
+        webrtc_url: MediaMTX WebRTC reader for the dashboard (browsers cannot play RTSP).
         vision_url: Injector base URL.
         http_host / http_port: Backend bind.
         scan_agl_m: Lawnmower altitude in metres (not 6-12 in).
@@ -28,6 +29,7 @@ class Settings(BaseSettings):
 
     mavsdk_address: str = "udpin://0.0.0.0:14540"
     rtsp_url: str = "rtsp://127.0.0.1:8554/cam"
+    webrtc_url: str = "/cam/"
     vision_url: str = "http://127.0.0.1:8090"
     http_host: str = "127.0.0.1"
     http_port: int = 8000

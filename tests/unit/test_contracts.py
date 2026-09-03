@@ -12,6 +12,7 @@ def test_compose_matches_loop_ports():
     assert "8554" in text
     assert "network_mode: host" in text
     assert "rtsp://127.0.0.1:8554/cam" in text
+    assert "host.docker.internal:127.0.0.1" in text
 
 
 def test_sitl_template_copied():
@@ -21,6 +22,7 @@ def test_sitl_template_copied():
     assert "hover_agl_m" in text
     assert "pump_off_events" in text
     assert "dandelion" in text
+    assert "mallow" in text
 
 
 def test_dashboard_exposes_safety_controls():
@@ -33,8 +35,17 @@ def test_dashboard_exposes_safety_controls():
         "/confirm",
         "dashboard-first",
         "RC-first",
+        "/hls/cam",
+        "Camera",
+        "hls.js",
     ):
         assert needle in app
+
+
+def test_mediamtx_exposes_webrtc_for_dashboard():
+    text = (ROOT / "sitl" / "mediamtx.yml").read_text()
+    assert "webrtcAddress: :8889" in text
+    assert "hlsAddress: :8888" in text
 
 
 def test_bot_files_present():

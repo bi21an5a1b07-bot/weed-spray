@@ -177,6 +177,7 @@ class AppState(BaseModel):
     hover_agl_m: list[HoverSample] = Field(default_factory=list)
     phase_log: list[PhaseEvent] = Field(default_factory=list)
     rtsp_url: str = ""
+    webrtc_url: str = ""
     mavsdk_address: str = ""
     arm_source: Literal["rc", "dashboard"] | None = None
     t_start: str | None = None

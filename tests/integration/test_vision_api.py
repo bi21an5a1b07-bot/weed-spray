@@ -12,6 +12,7 @@ def test_health_names():
         assert body["mode"] == "injector"
         assert body["names"]["0"] == "dandelion"
         assert body["names"]["2"] == "thistle"
+        assert body["names"]["3"] == "mallow"
 
 
 def test_inject_get_delete_and_reject_crabgrass():
@@ -50,6 +51,13 @@ def test_inject_get_delete_and_reject_crabgrass():
         listed = client.get("/detections").json()["detections"]
         assert len(listed) == 1
         assert listed[0]["class"] == "clover"
+
+        mallow = client.post(
+            "/inject",
+            json={"detections": [{"id": "m1", "class": "mallow", "north_m": 5, "east_m": 6}]},
+        )
+        assert mallow.status_code == 200
+        assert mallow.json()["detections"][-1]["class"] == "mallow"
 
         client.delete("/detections")
         assert client.get("/detections").json()["detections"] == []

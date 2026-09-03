@@ -20,7 +20,7 @@ Prefer the lightest PX4 SITL that can take Offboard. On ~25 GB RAM, Gazebo + YOL
 | 2 | Mock RTSP | same compose or a repo helper | MediaMTX (or equivalent **in the repo compose**) + `ffmpeg` looping a lawn `.mp4` | v1 camera. File source. Not Gazebo RTP 5600. Not `/dev/video`. |
 | 3 | Python backend | host, uv / Python 3.11 | weed-spray app | MAVSDK on 14540, geofence, scan, confirm, goto/hover, pump pulse, RTL, failsafe pump-off. |
 | 4 | Dashboard | host | TypeScript web, localhost only | Typed geofence, confirm/reject, kill. No cloud. |
-| 5 | YOLO worker | host, RTX 4090 | local detector | Boxes for `dandelion`, `clover`, `thistle`. Not a cloud LLM. Injector may stand in until weights exist. |
+| 5 | YOLO worker | host, RTX 4090 | local detector | Boxes for `dandelion`, `clover`, `thistle`, `mallow`. Not a cloud LLM. Injector may stand in until weights exist. |
 
 Do not add extra images at run time. If compose is missing, the run fails. Do not `apt install` or `docker pull` beyond that compose.
 
@@ -59,7 +59,7 @@ Fill `/workspace/weed-spray/sitl/last-run.md` with these rows. `pass` / `fail` /
 | 1 connect | Backend HEARTBEAT + MAVSDK on `udpin://0.0.0.0:14540` (also written `udp://:14540`). Dashboard loads. RTSP OPTIONS/DESCRIBE on `8554/cam` succeeds. Injector armed (YOLO later). | All four up. |
 | 2 typed geofence box | Operator (or test harness) types a rectangle. Backend sets the fence. PX4 holds it. | Fence present in log (`geofence` corners). Outside is a breach. |
 | 3 scan | Arm/takeoff per operator choice (RC-first or dashboard-first). Lawnmower scan at **2.0 m AGL** inside the box (`px4/offboard.md`, proposed). Do not scan at 6–12 in. | Path stays inside. Altitude is scan height, not spray hover. RC override still available. |
-| 4 inject or detect boxes | Inject `dandelion` / `clover` / `thistle` with ids (`@weeds`: no trained YOLO yet). Live YOLO on the mock RTSP file is optional. | ≥1 detection with `id`, `class`, position. Fake boxes are a pass. |
+| 4 inject or detect boxes | Inject `dandelion` / `clover` / `thistle` / `mallow` with ids (`@weeds`: no trained YOLO yet). Live YOLO on the mock RTSP file is optional. | ≥1 detection with `id`, `class`, position. Fake boxes are a pass. |
 | 5 confirm subset | Human (or harness acting as human) confirms a **subset**. Unconfirmed must not spray. | `confirms[]` exist. No pulse for unconfirmed ids. |
 | 6 visit | Offboard goto XY at **scan height**, then descend. Do not dive to 6–12 in while translating. | Each confirmed id visited, none of the rejected. |
 | 7 6–12 in hover | Hold 0.15–0.30 m AGL at the target. Record `hover_agl_m[]`. | Samples written. If no `distance_sensor`, write `missing` and **fail this step** (SIH has no lidar). Commanded hold still required. |

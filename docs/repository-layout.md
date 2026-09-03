@@ -3,11 +3,12 @@
 ```
 drone_control/
   compose.yaml              # PX4 SIH + MediaMTX + ffmpeg only
+  mise.toml                 # pin python 3.11, uv, node 26
   pyproject.toml            # uv package + [tool.ruff] + pytest
   GROK.md                   # Grok Build instructions (read this)
   AGENTS.md                 # pointer to GROK.md (auto-loaded by Grok TUI)
   Makefile                  # sitl / backend / vision / dashboard / accept / lint / check
-  README.md                 # short start; points here
+  README.md                 # project front door (what, run, safety)
   docs/                     # this documentation
   src/weed_spray/
     __init__.py
@@ -19,7 +20,7 @@ drone_control/
       mission.py            # scan → confirm → visit FSM
       main.py               # FastAPI routes :8000
     vision/
-      classes.py            # frozen dandelion/clover/thistle
+      classes.py            # dandelion/clover/thistle/mallow
       main.py               # injector :8090
       train.py              # optional YOLO CLI
     harness/
@@ -31,14 +32,20 @@ drone_control/
     unit/                   # no HTTP PX4
     integration/            # ASGI HTTP + FakeVehicle
   weeds/
-    weeds.yaml              # nc=3 names
-    inbox/                  # operator lawn photos (later)
-    dataset/images/{train,val}
+    weeds.yaml              # nc=4 names
+    inbox/                  # unlabeled + boxed backyard stills
+    dataset/images/{train,val}  # promoted copies (gitignored jpgs)
+  scripts/
+    extract_clip_inbox.py   # 1 fps JPEG dump into inbox
+    promote_inbox.py        # boxed inbox → dataset train/val (split by image)
+    fetch_inat_inbox.py     # operator-approved CC0/CC-BY iNat fetch
+    bot_files_delta.py      # sha256 snapshot vs var/bot_files-state.json
   sitl/
     mediamtx.yml            # RTSP path cam
     summaries/_template.md  # run-log contract
   media/                    # RTSP file (smoke.mp4 gitignored)
   bot_files/                # downloaded Grok Bot contracts
+  .grok/rules/bot-files.md  # ingest routing when those files change
   agent_prompts/            # Bot profiles for the Windows Grok Bot app
   var/                      # last-run.md, yolo runs (gitignored)
 ```

@@ -24,3 +24,14 @@ table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 th, td { text-align: left; padding: 0.35rem 0.5rem; border-bottom: 1px solid #2a3139; }
 .meta { color: #9aa3ad; font-size: 0.85rem; }
 .phase { font-variant-numeric: tabular-nums; }
+.cam { margin: 0.75rem 0 1rem; }
+.cam iframe,
+.cam video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid #3a424c;
+  border-radius: 6px;
+  background: #0b0d10;
+}
+.cam h2 { font-size: 1rem; font-weight: 600; margin: 0 0 0.5rem; }
