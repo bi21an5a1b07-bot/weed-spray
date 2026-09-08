@@ -144,9 +144,19 @@ def test_extract_dry_run_prints_argv(tmp_path: Path, capsys):
     assert not dest.exists()
 
 
-def test_main_dry_run_default_clip(capsys):
-    clip = ext.default_clip()
-    assert clip is not None
+def test_main_dry_run_default_clip(capsys, tmp_path, monkeypatch):
+    """Hermetic: do not require a gitignored media/backyard_weeds.* on disk."""
+    media = tmp_path / "media"
+    inbox = tmp_path / "weeds" / "inbox"
+    dataset = tmp_path / "weeds" / "dataset"
+    media.mkdir()
+    inbox.mkdir(parents=True)
+    dataset.mkdir(parents=True)
+    (media / "backyard_weeds.mp4").write_bytes(b"x")
+    monkeypatch.setattr(ext, "MEDIA", media)
+    monkeypatch.setattr(ext, "INBOX", inbox)
+    monkeypatch.setattr(ext, "DATASET", dataset)
+    assert ext.default_clip() is not None
     assert ext.main(["--dry-run"]) == 0
     out = capsys.readouterr().out
     assert "ffmpeg" in out
