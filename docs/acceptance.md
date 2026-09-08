@@ -4,6 +4,8 @@ How to run the weed-spray app through the live 10-step accept grade. Normative c
 
 This is **not** `make check` (ruff + pytest with `FakeVehicle`). That gate never starts PX4 — see [testing.md](testing.md).
 
+Remote AWS EC2 operator host path (SprayPO start/stop, $10/mo cap): [acceptance-aws.md](acceptance-aws.md). WSL remains the primary laptop path.
+
 ## What "green" means
 
 Two different bars:
