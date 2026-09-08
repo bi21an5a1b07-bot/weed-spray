@@ -1,8 +1,10 @@
 # Acceptance testing (live SITL)
 
-How to run the weed-spray app through the live 10-step accept grade. Normative contract: [`bot_files/sitl_loop.md`](../bot_files/sitl_loop.md). Grader: `weed_spray.harness.accept` (`uv run weed-spray-accept` / `make accept`).
+How to run the weed-spray app through the live 10-step accept grade **on the operator WSL host**. Normative contract: [`bot_files/sitl_loop.md`](../bot_files/sitl_loop.md). Grader: `weed_spray.harness.accept` (`uv run weed-spray-accept` / `make accept`).
 
 This is **not** `make check` (ruff + pytest with `FakeVehicle`). That gate never starts PX4 — see [testing.md](testing.md).
+
+**Grok Bot / shared box:** do not run this live loop there. Use [acceptance-bot-vm.md](acceptance-bot-vm.md) (`make check` only).
 
 ## What "green" means
 
