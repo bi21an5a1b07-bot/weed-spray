@@ -32,7 +32,11 @@ Uses `tests/fakes.py` (`FakeVehicle`) so MAVSDK never starts. Each test module h
 - Compose/port contracts, dashboard route strings, harness last-run table
 - extract_clip dry-run: hermetic tmp media (no gitignored backyard clip)
 
-## Live accept (needs SITL)
+## Bot computer (no live SITL)
+
+On the Grok Bot VM / shared box, the honest bar is `make check` (ruff + pytest with `FakeVehicle`). Runbook: [acceptance-bot-vm.md](acceptance-bot-vm.md). Do not run `make sitl` / `make accept` there.
+
+## Live accept (needs operator WSL)
 
 Full operator runbook: [acceptance.md](acceptance.md).
 
