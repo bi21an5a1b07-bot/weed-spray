@@ -60,7 +60,7 @@ One-time human setup **before** bots run UAT. Bots do **not** create the AWS acc
 2. AMI: Ubuntu **22.04** with **Docker** installed (and compose-capable tooling).
 3. Instance type default: **`t3.large`** (bump to `t3.xlarge` only if OOM on first real run).
 4. Tag instance + volumes with `Project=weed-spray`, `Purpose=sitl-uat`.
-5. AMI ships **Docker and base tools only** (compose-capable). It does **not** pre-bake the weed-spray repo or Python/npm env. Repo bootstrap on a virgin LT box is **`scripts/aws_uat/start_host.sh`'s job** (exact bake of Docker/base tools is Spray Dew’s follow-up).
+5. AMI ships **Docker and base tools only** (compose-capable). It does **not** pre-bake the weed-spray repo or Python/npm env. Repo bootstrap on a virgin LT box is **`scripts/aws_uat/start_host.sh`'s job** (exact bake of Docker/base tools is Spray Dev’s follow-up).
 6. **No always-on** instance — template only; each UAT **launches** then **terminates/deletes**.
 
 ### 5. Network and SSH key
