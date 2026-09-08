@@ -30,6 +30,7 @@ Uses `tests/fakes.py` (`FakeVehicle`) so MAVSDK never starts. Each test module h
 - Vision HTTP: class rejection, inject overwrite
 - Backend HTTP on the same asyncio loop as mission tasks
 - Compose/port contracts, dashboard route strings, harness last-run table
+- extract_clip dry-run: hermetic tmp media (no gitignored backyard clip)
 
 ## Live accept (needs SITL)
 

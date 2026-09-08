@@ -31,22 +31,26 @@ DEFAULT_CLIP_NAMES = (
 Runner = Callable[[Sequence[str]], int]
 
 
-def default_clip(media: Path = MEDIA) -> Path | None:
+def default_clip(media: Path | None = None) -> Path | None:
     """First existing default clip name under ``media/`` (MOV before mp4)."""
+    base = MEDIA if media is None else media
     for name in DEFAULT_CLIP_NAMES:
-        path = media / name
+        path = base / name
         if path.is_file():
             return path
     return None
 
 
-def inbox_dest(clip: Path, inbox: Path = INBOX) -> Path:
+def inbox_dest(clip: Path, inbox: Path | None = None) -> Path:
     """``weeds/inbox/<clip-stem>/``. Stem keeps mixed-case files in one folder."""
-    return inbox / clip.stem.lower()
+    base = INBOX if inbox is None else inbox
+    return base / clip.stem.lower()
 
 
-def dest_error(dest: Path, inbox: Path = INBOX, dataset: Path = DATASET) -> str | None:
+def dest_error(dest: Path, inbox: Path | None = None, dataset: Path | None = None) -> str | None:
     """Reject writes outside inbox or into the labeled dataset tree."""
+    inbox = INBOX if inbox is None else inbox
+    dataset = DATASET if dataset is None else dataset
     dest_r = dest.resolve()
     inbox_r = inbox.resolve()
     dataset_r = dataset.resolve()
@@ -149,10 +153,12 @@ def extract(
     force: bool = False,
     dry_run: bool = False,
     runner: Runner = run_ffmpeg,
-    inbox: Path = INBOX,
-    dataset: Path = DATASET,
+    inbox: Path | None = None,
+    dataset: Path | None = None,
 ) -> int:
     """Dump stills unless they already exist. Always refresh ``SOURCE.md`` when count > 0."""
+    inbox = INBOX if inbox is None else inbox
+    dataset = DATASET if dataset is None else dataset
     err = dest_error(dest, inbox=inbox, dataset=dataset)
     if err:
         print(err, file=sys.stderr)
