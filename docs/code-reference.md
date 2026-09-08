@@ -233,7 +233,7 @@ Upload the yard rectangle to PX4 and store it on state.
 
 #### `Mission.inject(req)`
 
-Merge detections by id. Raises `ValueError` if `class` is outside `{dandelion, clover, thistle}`. Does not confirm.
+Merge detections by id. Raises `ValueError` if `class` is outside `{dandelion, clover, thistle, mallow}`. Does not confirm.
 
 #### `Mission.confirm(req)`
 
