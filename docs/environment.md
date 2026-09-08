@@ -17,5 +17,6 @@ Prefix `WEED_`. Defined in `weed_spray.backend.config.Settings`.
 | `WEED_PUMP_ON` / `OFF` | `1.0` / `0.0` | Scale [-1, 1]; OFF=0 is proposed |
 | `WEED_PUMP_PULSE_S` | `0.75` | App sleep, not a PX4 dwell |
 | `WEED_LAWNMOWER_SPACING_M` | `4.0` | Row spacing in local east |
+| `WEED_SCAN_SPEED_M_S` | `2.0` | Reserved; path currently uses settle sleeps |
 
 Unknown PX4 enums (`COM_OF_LOSS_T`, Kakute MAIN vs AUX, DIS/FAIL µs) are **not** set from env. Operator/QGC owns those.
