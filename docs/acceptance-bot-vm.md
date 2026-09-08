@@ -9,7 +9,7 @@ Do **not** run `make sitl` or `make accept` here and call it acceptance. Those n
 | | Bot computer | Operator WSL |
 |---|---|---|
 | Where | Shared Grok Bot Linux box | DevStation / WSL |
-| Green bar | `make check` (ruff + pytest) | Live 10-step `make accept` |
+| Green bar | `make check` (ruff + pytest) exit `0` | Live loop per [acceptance.md](acceptance.md): default SIH expects exit `1` (step 7 fail); exit `0` only with rangefinder |
 | Vehicle | `tests/fakes.py` `FakeVehicle` — no MAVSDK, no PX4 | Real SIH over MAVSDK `:14540` |
 | Contract still true | Human confirm, no invented PX4 params, class map | Same + `bot_files/sitl_loop.md` rows |
 
