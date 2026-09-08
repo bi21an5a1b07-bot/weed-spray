@@ -34,10 +34,13 @@ Uses `tests/fakes.py` (`FakeVehicle`) so MAVSDK never starts. Each test module h
 
 ## Live accept (needs SITL)
 
+Full operator runbook: [acceptance.md](acceptance.md).
+
 All of: `make sitl`, vision, backend, dashboard, then:
 
 ```bash
-uv run weed-spray-accept --out var/last-run.md
+make accept
+# same as: uv run weed-spray-accept --out var/last-run.md
 ```
 
 Grades `bot_files/sitl_loop.md`. SIH hover step is expected to fail without a rangefinder.

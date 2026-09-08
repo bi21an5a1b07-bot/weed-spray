@@ -24,11 +24,14 @@ Not Gazebo RTP 5600. Not `/dev/video`.
 
 ## Accept script
 
+Full operator runbook: [acceptance.md](acceptance.md).
+
 ```bash
-uv run weed-spray-accept --out var/last-run.md
+make accept
+# same as: uv run weed-spray-accept --out var/last-run.md
 ```
 
-Ten steps from `loop.md`. First fail blocks later rows except **pump-off on kill**, which still runs if the vehicle armed. Step 7 (6–12 in hover) **fails on SIH** when `DISTANCE_SENSOR` is missing.
+Ten steps from `bot_files/sitl_loop.md`. First fail blocks later rows except **pump-off on kill**, which still runs if the vehicle armed. Step 7 (6–12 in hover) **fails on SIH** when `DISTANCE_SENSOR` is missing.
 
 Realtime only (`PX4_SIM_SPEED_FACTOR` unset).
 
