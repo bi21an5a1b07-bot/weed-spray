@@ -21,7 +21,9 @@ Hard cap for tagged weed-spray UAT resources: **$10 USD per calendar month**.
 - Budget name: **`weed-spray-sitl-uat`** (AWS Budgets Cost Budget, monthly, amount **$10 USD**).
 - Tag filter: `Project=weed-spray` and `Purpose=sitl-uat` (use these on every UAT resource).
 - If month-to-date **actual** or **forecast** is **>= $10**, or the budget is in **ALARM**: **stop all AWS UAT** until the next calendar month begins.
-- Resources **always shut down when not in use** (`scripts/aws_uat/stop_host.sh` stops the instance; never leave billable UAT idle). Always-on EC2 is forbidden.
+- **Every AWS resource that costs money** and is tagged for this UAT (`Project=weed-spray`, `Purpose=sitl-uat`) is **shut down when not in use** — not only the EC2 instance. That includes EC2 **and** any EBS volumes, Elastic IPs, NAT gateways, load balancers, or other billable attachments created for UAT.
+- After each UAT run, `scripts/aws_uat/stop_host.sh` must leave **zero ongoing UAT charges** from those tagged resources, except any dormant cost Brian has **explicitly** accepted in writing (default: **none** — no idle billable spend).
+- Always-on / idle UAT spend is forbidden.
 
 ### How SprayPO/bots detect and obey
 
@@ -97,7 +99,7 @@ Do not invent rangefinder PX4 params to fake a green table. Exit `0` only with r
 2. **Start host** — `scripts/aws_uat/start_host.sh` (tagged EC2 / launch template `weed-spray-sitl-uat`; wait SSH/Tailscale; pull `master`; `make sitl`; remind host apps).
 3. **Host apps** — vision, backend, dashboard on the EC2 host (see start order).
 4. **UAT** — SprayPO browser via Tailscale or SSH forward to ports 8080 / 8000, and/or `make accept` on the host → save `var/last-run.md`.
-5. **Stop** — `scripts/aws_uat/stop_host.sh` (compose down on host, then **STOP** instance — not terminate by default). Do not leave idle billable UAT running.
+5. **Stop all costed UAT** — `scripts/aws_uat/stop_host.sh` (compose down on host; shut down **every** tagged billable UAT resource — EC2 and EBS/EIP/NAT/etc. if present). Default outcome: **zero ongoing UAT charges** (no dormant exception unless Brian documented one). Do not leave any costed UAT resource running or billing idle.
 6. **On failure** — SprayPO opens detailed GitHub issues. SprayPO does **not** merge or implement fixes.
 
 ### Scripts (Spray Dev follow-up)
@@ -108,19 +110,20 @@ These paths are locked names; **scripts land with Spray Dev** (Refs #10). They a
 |---|---|
 | `scripts/aws_uat/budget_ok.sh` | Exit 0 only if month-to-date actual **and** forecast are **< $10** and budget `weed-spray-sitl-uat` is not in ALARM; else exit 1 (hard stop at **>= $10** actual or forecast, or ALARM) |
 | `scripts/aws_uat/start_host.sh` | Start tagged EC2 (or launch template); wait SSH/Tailscale; git pull master; make sitl; remind host apps |
-| `scripts/aws_uat/stop_host.sh` | Compose down on host; STOP instance (not terminate by default) |
+| `scripts/aws_uat/stop_host.sh` | Compose down on host; shut down **all** tagged costed UAT resources (EC2 **and** EBS/EIP/NAT/etc. if present) so ongoing UAT charges are **zero** by default (Brian may document an explicit dormant exception; default is none). Instance stop vs terminate is Spray Dev’s choice as long as the zero-idle-cost bar is met. |
 
 SprayPO calls those only; no always-on. Tags on resources: `Project=weed-spray`, `Purpose=sitl-uat`.
 
 ## Do not
 
-- Leave always-on / idle billable EC2 (or other UAT resources) running.
+- Leave **any** costed tagged UAT resource running or billing idle (EC2, EBS, EIP, NAT, or other) when UAT is not in use.
+- Assume “EC2 stopped” is enough if attached/orphan billable resources still charge.
 - Run live Docker / PX4 SIH on the shared Grok Bot VM.
 - Open dashboard `:8080`, API `:8000`, or vision `:8090` to the world (`0.0.0.0/0`).
 - Invent rangefinder PX4 params to force `make accept` exit `0`.
 - Arm, Offboard, or pulse a pump on **real** aircraft / hardware ([SAFETY.md](../agent_prompts/_shared/SAFETY.md), [safety.md](safety.md)).
 - Exceed the **$10 USD / calendar month** cap; start UAT when `budget_ok.sh` fails.
-- Terminate the instance by default (stop unless Spray Dev documents otherwise).
+- Invent a dormant paid exception; only Brian may accept one explicitly (default: none).
 
 ## Related
 
