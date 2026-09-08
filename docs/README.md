@@ -11,6 +11,7 @@ Start at the repo [`README.md`](../README.md). Normative product rules live in `
 | [HTTP API](api.md) | Backend `:8000` and vision `:8090` |
 | [SITL](sitl.md) | Docker SIH, RTSP, accept script |
 | [Acceptance testing](acceptance.md) | Live SITL 10-step make-accept runbook |
+| [Acceptance on the bot computer](acceptance-bot-vm.md) | Bot VM: `make check` / FakeVehicle (not live SITL) |
 | [Vision](vision.md) | Frozen classes, injector, training |
 | [Hardware](hardware.md) | Kakute / Pi / pump mapping |
 | [Safety](safety.md) | Confirm, RC, failsafes, FAA notes |
