@@ -30,28 +30,71 @@ Hard cap for tagged weed-spray UAT resources: **$10 USD per calendar month**.
 
 Before every start, run **`scripts/aws_uat/budget_ok.sh`** (lands with Spray Dev). Non-zero exit is a **hard stop**: do not start EC2; wait until the next calendar month. The script must exit non-zero when month-to-date actual **or** forecast is **>= $10**, or when budget `weed-spray-sitl-uat` is in ALARM.
 
-### AWS Budget alarm (recipe)
+## Human AWS setup (Brian / operator, once)
 
-Brian creates once if bots cannot:
+One-time human setup **before** bots run UAT. Bots do **not** create the AWS account, place Marketplace orders, or raise the spend cap. After this checklist is done, configure the **AWS Grok Bot plugin** so SprayPO / scripts can call AWS for start/teardown UAT (credentials stay in the plugin / IAM — never paste long-lived keys into chat or `/workspace`).
 
-1. Tag every UAT resource (EC2, EBS, etc.) with `Project=weed-spray` and `Purpose=sitl-uat`.
-2. Create Cost Budget named **`weed-spray-sitl-uat`**, filtered to those tags, monthly, **$10 USD**.
-3. Alerts: e.g. actual 80% and 100%; forecasted 100%. Notify Brian (and any bot-safe SNS/email already in the account).
-4. Bots use least-privilege read of budget status via `budget_ok.sh`; they never raise the cap.
+### 1. Account
 
-## Prerequisites
+1. Use (or create) an AWS account Brian controls for weed-spray UAT.
+2. Prefer a dedicated account or a clearly isolated OU/project so UAT spend is easy to see against the **$10/mo** cap.
+3. Enable billing alerts / Cost Explorer access for the operator identity.
 
-Defaults (assumptions, correctable):
+### 2. Region and tags
 
-- Region: **`us-west-2`**
-- Instance: **`t3.large`** (bump to `t3.xlarge` only if OOM)
-- AMI: Ubuntu 22.04 with Docker; launch template name **`weed-spray-sitl-uat`** (Brian creates once)
-- Brian owns AWS account + initial IAM + budget + launch template; bots use least privilege after
+1. Default region: **`us-west-2`**.
+2. Agree the tag pair on **every** UAT resource: `Project=weed-spray`, `Purpose=sitl-uat`.
+3. Enforce tags on create where possible (org tag policy or launch-template tag specs) so Budgets and `stop_host.sh` can find orphans.
 
-On the EC2 operator host:
+### 3. Cost Budget
+
+1. Create AWS Budgets **Cost Budget** named **`weed-spray-sitl-uat`**.
+2. Period: **monthly**; amount: **$10 USD**.
+3. Filter: resources tagged `Project=weed-spray` **and** `Purpose=sitl-uat`.
+4. Alerts: e.g. actual **80%** and **100%**; forecasted **100%**. Notify Brian (email / SNS already in the account).
+5. `budget_ok.sh` later reads this budget; hard stop when actual or forecast is **>= $10**, or budget is in **ALARM**.
+
+### 4. Launch template
+
+1. Create launch template name **`weed-spray-sitl-uat`**.
+2. AMI: Ubuntu **22.04** with **Docker** installed (and compose-capable tooling).
+3. Instance type default: **`t3.large`** (bump to `t3.xlarge` only if OOM on first real run).
+4. Tag instance + volumes with `Project=weed-spray`, `Purpose=sitl-uat`.
+5. User-data / AMI should be enough that a fresh launch can clone `master`, run `make sitl`, and start host apps (exact bake is Spray Dev’s follow-up).
+6. **No always-on** instance — template only; each UAT **launches** then **terminates/deletes**.
+
+### 5. Network and SSH key
+
+1. Create (or reuse) an SSH key pair the operator and bots’ automation can use; store the private key only in the agreed secret store / plugin — **never** in the repo or chat.
+2. Security group: allow **SSH** only from a known path (operator IP, bastion, or bot egress you control). **No** `0.0.0.0/0` on app ports **8000 / 8080 / 8090**.
+3. Default SprayPO reachability after setup: **ssh `-L`** for those ports (apps may bind localhost).
+
+### 6. IAM (least privilege for bots / plugin)
+
+1. Create an IAM principal (user or role) for the **AWS Grok Bot plugin** / `scripts/aws_uat/*.sh`.
+2. Allow only what UAT needs, for example: describe/list budgets; run-instances from launch template `weed-spray-sitl-uat`; terminate instances; delete tagged UAT volumes/EIPs; describe instances/tags in `us-west-2`. Deny broad admin.
+3. Wire that principal into the AWS Grok Bot plugin **after** steps 1–5. Do not paste access keys into chat, issues, or `/workspace`.
+
+### 7. Done when
+
+- [ ] Budget `weed-spray-sitl-uat` exists at **$10/mo** with tag filter + alerts
+- [ ] Launch template `weed-spray-sitl-uat` launches a Docker-capable Ubuntu host in `us-west-2`
+- [ ] SSH key + locked-down SG in place
+- [ ] Least-privilege IAM ready
+- [ ] AWS Grok Bot plugin configured to that account/role
+- [ ] A dry `budget_ok.sh` → `start_host.sh` → teardown `stop_host.sh` leaves **zero** ongoing tagged UAT charges
+
+## Prerequisites (each UAT run)
+
+Defaults (from human setup above):
+
+- Region **`us-west-2`**, launch template **`weed-spray-sitl-uat`**, instance **`t3.large`**
+- Budget gate + terminate/delete teardown (see Cost cap)
+
+On the EC2 operator host after launch:
 
 - Same compose images as `compose.yaml` / [sitl.md](sitl.md). Do not pull extras at runtime.
-- Repo clone of `master`; Python env with dev extras; dashboard packages if needed (same as [acceptance.md](acceptance.md)).
+- Repo clone of `master`; Python env with `uv sync --extra dev`; dashboard packages if needed (same as [acceptance.md](acceptance.md)).
 
 ## Network
 
