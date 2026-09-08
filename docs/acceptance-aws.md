@@ -20,7 +20,7 @@ Hard cap for tagged weed-spray UAT resources: **$10 USD per calendar month**.
 
 - Budget name: **`weed-spray-sitl-uat`** (AWS Budgets Cost Budget, monthly, amount **$10 USD**).
 - Tag filter: `Project=weed-spray` and `Purpose=sitl-uat` (use these on every UAT resource).
-- If month-to-date **actual** or **forecast** would pass **$10**, or the budget is in **ALARM**: **stop all AWS UAT** until the next calendar month begins.
+- If month-to-date **actual** or **forecast** is **>= $10**, or the budget is in **ALARM**: **stop all AWS UAT** until the next calendar month begins.
 - Resources **always shut down when not in use** (`scripts/aws_uat/stop_host.sh` stops the instance; never leave billable UAT idle). Always-on EC2 is forbidden.
 
 ### How SprayPO/bots detect and obey
@@ -106,7 +106,7 @@ These paths are locked names; **scripts land with Spray Dev** (Refs #10). They a
 
 | Script | Role |
 |---|---|
-| `scripts/aws_uat/budget_ok.sh` | Exit 0 only if month-to-date actual and forecast are under $10 and budget `weed-spray-sitl-uat` is not in ALARM; else exit 1 |
+| `scripts/aws_uat/budget_ok.sh` | Exit 0 only if month-to-date actual **and** forecast are **< $10** and budget `weed-spray-sitl-uat` is not in ALARM; else exit 1 (hard stop at **>= $10** actual or forecast, or ALARM) |
 | `scripts/aws_uat/start_host.sh` | Start tagged EC2 (or launch template); wait SSH/Tailscale; git pull master; make sitl; remind host apps |
 | `scripts/aws_uat/stop_host.sh` | Compose down on host; STOP instance (not terminate by default) |
 
