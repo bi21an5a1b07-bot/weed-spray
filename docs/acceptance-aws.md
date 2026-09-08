@@ -57,10 +57,15 @@ One-time human setup **before** bots run UAT. Bots do **not** create the AWS acc
 ### 4. Launch template
 
 1. Create launch template name **`weed-spray-sitl-uat`**.
-2. AMI: Ubuntu **22.04** with **Docker** installed (and compose-capable tooling).
+2. AMI: Ubuntu **22.04** with a **widened bake** (not Docker-only). Bake into the AMI explicitly:
+   - **`git`**
+   - **`mise` / `uv`** (Python toolchain via mise or uv available on PATH)
+   - **`node` / `npm`**
+   - host **`ffmpeg`**
+   - **Docker** (compose-capable)
 3. Instance type default: **`t3.large`** (bump to `t3.xlarge` only if OOM on first real run).
 4. Tag instance + volumes with `Project=weed-spray`, `Purpose=sitl-uat`.
-5. AMI ships **Docker and base tools only** (compose-capable). It does **not** pre-bake the weed-spray repo or Python/npm env. Repo bootstrap on a virgin LT box is **`scripts/aws_uat/start_host.sh`'s job** (exact bake of Docker/base tools is Spray Dev’s follow-up).
+5. AMI ships that **widened bake** above. It does **not** pre-bake the weed-spray repo or a synced `uv`/npm project env. Repo bootstrap on a virgin LT box is **`scripts/aws_uat/start_host.sh`’s job** (`git clone` → `uv sync --extra dev` → `make sitl`); the script does **not** apt-install the toolchain each run — those tools come from the AMI.
 6. **No always-on** instance — template only; each UAT **launches** then **terminates/deletes**.
 
 ### 5. Network and SSH key
@@ -78,7 +83,7 @@ One-time human setup **before** bots run UAT. Bots do **not** create the AWS acc
 ### 7. Done when
 
 - [ ] Budget `weed-spray-sitl-uat` exists at **$10/mo** with tag filter + alerts
-- [ ] Launch template `weed-spray-sitl-uat` launches a Docker-capable Ubuntu host in `us-west-2`
+- [ ] Launch template `weed-spray-sitl-uat` launches Ubuntu in `us-west-2` with AMI bake: `git`, `mise`/`uv`, `node`/`npm`, host `ffmpeg`, Docker (compose-capable)
 - [ ] SSH key + locked-down SG in place
 - [ ] Least-privilege IAM ready
 - [ ] AWS Grok Bot plugin configured to that account/role
@@ -115,7 +120,7 @@ Same four processes as [acceptance.md](acceptance.md), all on the **EC2 operator
 3. Backend GCS (`make backend`) — port 8000
 4. Dashboard (`make dashboard`) — port 8080
 
-`scripts/aws_uat/start_host.sh` **launches a new instance from launch template `weed-spray-sitl-uat` only** (not resume-stopped), waits until SSH is up, then on the **virgin** box: `git clone` `bi21an5a1b07-bot/weed-spray` → `uv sync --extra dev` (and `npm` in `dashboard/` if needed) → `make sitl`, and reminds the operator to start the three host apps (exact app start may be extended by Spray Dev). **No `git pull`-only path** — AMI has Docker/base tools only; full repo bootstrap is this script's job.
+`scripts/aws_uat/start_host.sh` **launches a new instance from launch template `weed-spray-sitl-uat` only** (not resume-stopped), waits until SSH is up, then on the **virgin** box: `git clone` `bi21an5a1b07-bot/weed-spray` → `uv sync --extra dev` (and `npm` in `dashboard/` if needed) → `make sitl`, and reminds the operator to start the three host apps (exact app start may be extended by Spray Dev). **No `git pull`-only path.** The AMI already bakes `git`, `mise`/`uv`, `node`/`npm`, host `ffmpeg`, and Docker (compose-capable); this script does **not** apt-install the toolchain each run — it only clones/syncs/starts SITL.
 
 ## Run the grader
 
@@ -153,7 +158,7 @@ These paths are locked names; **scripts land with Spray Dev** (Refs #10). They a
 | Script | Role |
 |---|---|
 | `scripts/aws_uat/budget_ok.sh` | Exit 0 only if month-to-date actual **and** forecast are **< $10** and budget `weed-spray-sitl-uat` is not in ALARM; else exit 1 (hard stop at **>= $10** actual or forecast, or ALARM) |
-| `scripts/aws_uat/start_host.sh` | Launch **only** from template `weed-spray-sitl-uat` (no resume-stopped default); wait SSH; on virgin LT box: `git clone` bi21an5a1b07-bot/weed-spray → `uv sync --extra dev` (+ npm in `dashboard/` if needed) → `make sitl`; remind host apps. AMI = Docker/base tools only; **no `git pull`-only path** |
+| `scripts/aws_uat/start_host.sh` | Launch **only** from template `weed-spray-sitl-uat` (no resume-stopped default); wait SSH; on virgin LT box: `git clone` bi21an5a1b07-bot/weed-spray → `uv sync --extra dev` (+ npm in `dashboard/` if needed) → `make sitl`; remind host apps. AMI bake = `git`, `mise`/`uv`, `node`/`npm`, host `ffmpeg`, Docker (compose-capable); script does **not** apt-install toolchain each run; **no `git pull`-only path** |
 | `scripts/aws_uat/stop_host.sh` | Compose down; **terminate** instance; **delete** tagged costed UAT resources (EBS/EIP/NAT/etc. if present) so ongoing UAT charges are **zero** by default. Stopped-but-EBS-billing is not the default. Dormant spend only if Brian accepts in writing later (default none). |
 
 SprayPO calls those only; no always-on. Tags on resources: `Project=weed-spray`, `Purpose=sitl-uat`.
@@ -163,7 +168,7 @@ SprayPO calls those only; no always-on. Tags on resources: `Project=weed-spray`,
 - Leave **any** costed tagged UAT resource running or billing idle (EC2, EBS, EIP, NAT, or other) when UAT is not in use.
 - Use “stop instance, keep root EBS” as the default teardown (that still bills).
 - Resume a stopped UAT instance as the default start path (start via launch template only).
-- Use a **`git pull`-only** path on the operator host (virgin LT box must `git clone` + `uv sync --extra dev` + `make sitl`; AMI does not ship the repo).
+- Use a **`git pull`-only** path on the operator host (virgin LT box must `git clone` + `uv sync --extra dev` + `make sitl`; AMI bakes toolchain tools but does **not** ship the weed-spray repo).
 - Claim Tailscale IP reachability while apps bind **localhost only** (use ssh `-L`, or bind apps on the Tailscale iface too).
 - Run live Docker / PX4 SIH on the shared Grok Bot VM.
 - Open dashboard `:8080`, API `:8000`, or vision `:8090` to the world (`0.0.0.0/0`).
