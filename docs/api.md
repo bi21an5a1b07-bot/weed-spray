@@ -11,9 +11,9 @@ Base URL in SITL: `http://127.0.0.1:8000`. The dashboard calls the same paths un
 | GET | `/ws` | WebSocket: snapshot every 250 ms |
 | POST | `/connect` | MAVSDK `udpin://0.0.0.0:14540` |
 | POST | `/fence` | Body: `{north_m,south_m,east_m,west_m}` local meters |
-| POST | `/scan` | Body: `{source: "dashboard"|"rc"}` (default `dashboard` if omitted). Starts lawnmower |
+| POST | `/scan` | Body: `{source: "dashboard"\|"rc"}` (default `dashboard` if omitted). Starts lawnmower |
 | POST | `/detections/inject` | Body: `{detections:[{id,class,north_m,east_m,conf?}]}` |
-| POST | `/confirm` | `{ids:[]}` (all confirm) and/or `{decisions:[{detection_id, decision: "confirm"|"reject"}]}` |
+| POST | `/confirm` | `{ids:[]}` (all confirm) and/or `{decisions:[{detection_id, decision: "confirm"\|"reject"}]}` |
 | POST | `/visit` | Visit confirmed ids only; pulse; RTL |
 | POST | `/rtl` | Pump off, return to launch |
 | POST | `/kill` | Pump off, Hold (RTL if Hold fails) |
