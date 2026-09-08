@@ -6,6 +6,11 @@ This is **not** `make check` (ruff + pytest with `FakeVehicle`). That gate never
 
 ## What "green" means
 
+Two different bars:
+
+1. **Processes up** — the four rows below are running (required before `make accept`).
+2. **Full accept table** — every step `pass` and exit `0`. Default SIH cannot hit this (step 7); see [Expected SIH result](#expected-sih-result).
+
 All of these are up on the **operator WSL** host (not a Grok Bot VM; do not start Docker from Bot):
 
 | Process | How | Port / bind |
@@ -55,7 +60,9 @@ make accept
 # same as: uv run weed-spray-accept --out var/last-run.md
 ```
 
-Exit code `0` only if no step is `fail`. The script prints the markdown table and writes `--out` (default `var/last-run.md`).
+The script prints the markdown table and writes `--out` (default `var/last-run.md`).
+
+**Default SIH stack:** expect exit code `1`. Step 7 fails (`DISTANCE_SENSOR` missing → hover `missing`); steps 8–9 are then `blocked`. That is a correct SIH run, not a setup failure. Exit `0` only when every step passes (needs rangefinder data — not default compose).
 
 ## The 10 steps (what the harness does)
 
@@ -80,9 +87,18 @@ First fail stops further grading (`blocked`). Step 10 still runs if the vehicle 
 
 ## Expected SIH result
 
-PX4 SIH has **no** `DISTANCE_SENSOR`. Step 7 **fails** with hover samples marked `missing`. Do not treat GPS / `vehicle_local_position.z` as AGL. That failure is honest per `bot_files/sitl_loop.md` — not a license to invent rangefinder params.
+PX4 SIH has **no** `DISTANCE_SENSOR`. On the default `make sitl` path:
 
-A full green table needs rangefinder data (hardware or a Gazebo lidar profile). That is **not** the default compose.
+| | Expected |
+|---|---|
+| Exit code | `1` (not `0`) |
+| Step 7 | `fail` — hover samples `missing` |
+| Steps 8–9 | `blocked` (first fail stops the grade) |
+| Step 10 | still runs if the vehicle armed |
+
+Do not treat GPS / `vehicle_local_position.z` as AGL. Do not invent rangefinder PX4 params to fake a green table. "Good enough for SIH" = processes up + steps 1–6 and 10 behaving as above + honest step 7 fail — **not** `make accept` exit `0`.
+
+A full green table (exit `0`) needs rangefinder data (hardware or a Gazebo lidar profile). That is **not** the default compose.
 
 ## After the run
 
