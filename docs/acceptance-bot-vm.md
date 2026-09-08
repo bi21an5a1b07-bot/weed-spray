@@ -15,7 +15,7 @@ This is **not** the live SITL acceptance loop. Live accept runs on **operator WS
 | Default SIH accept | N/A | Expect exit 1 (step 7 fail / DISTANCE_SENSOR missing); exit 0 only with rangefinder |
 | Vehicle under test | tests/fakes.py FakeVehicle - no MAVSDK, no PX4 | Real SIH over MAVSDK :14540 |
 
-**Bot-VM UAT = clone → `uv sync` → `make check` exit `0` ONLY.** That is the SprayPO stand-up proof for this host. It does **not** replace operator `make accept`. Live UAT stays on Brian WSL; paste `var/last-run.md` for review. Do not claim live SITL works on the bot box.
+**Bot-VM UAT = clone → `uv sync --extra dev` → `make check` exit `0` ONLY.** That is the SprayPO stand-up proof for this host. It does **not** replace operator `make accept`. Live UAT stays on Brian WSL; paste `var/last-run.md` for review. Do not claim live SITL works on the bot box.
 
 ## Prerequisites (this VM)
 
@@ -53,7 +53,7 @@ uv sync --extra dev
 
 ### 3. Optional dashboard (UI only)
 
-Not required for make check. Useful if you want the Vite UI on :8080 while poking HTTP APIs against a FakeVehicle-backed backend later:
+Not required for make check. The Vite UI can sit on :8080 for manual poking, but the default `weed-spray` backend uses live `Vehicle()` — without SIH on :14540, `/connect` returns 503. FakeVehicle is test-only (`tests/fakes.py`); this optional UI path is **not** FakeVehicle-backed UAT.
 
 ```bash
 (cd dashboard && npm install)
