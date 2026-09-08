@@ -519,17 +519,17 @@ No live PX4 in pytest. Live grading is `weed-spray-accept` ([testing.md](testing
 
 Unlabeled 1 fps JPEG dump from a lawn clip into `weeds/inbox/<stem>/`. Does not box, split train/val, or train.
 
-### `default_clip(media) -> Path | None`
+### `default_clip(media=None) -> Path | None`
 
-First existing of `backyard_weeds.MOV`, `.mov`, `.mp4` under `media/`.
+First existing of `backyard_weeds.MOV`, `.mov`, `.mp4` under `media/`. Omitting `media` uses module `MEDIA` at **call time** (so tests can monkeypatch).
 
-### `inbox_dest(clip, inbox) -> Path`
+### `inbox_dest(clip, inbox=None) -> Path`
 
-`inbox / clip.stem.lower()`.
+`inbox / clip.stem.lower()`. Omitting `inbox` uses module `INBOX` at call time.
 
-### `dest_error(dest, inbox, dataset) -> str | None`
+### `dest_error(dest, inbox=None, dataset=None) -> str | None`
 
-Error if `dest` is not an inbox subfolder or sits under `weeds/dataset/`.
+Error if `dest` is not an inbox subfolder or sits under `weeds/dataset/`. Omitting path args uses module `INBOX` / `DATASET` at call time.
 
 ### `existing_frames(dest) -> list[Path]`
 
