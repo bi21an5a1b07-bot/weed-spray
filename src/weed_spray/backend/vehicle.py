@@ -28,14 +28,18 @@ def distance_reading_m(
     *,
     mirror_eps_m: float = 0.5,
     mirror_min_m: float = 1.0,
+    max_trust_m: float = 1.0,
 ) -> float | None:
     """Parse lidar metres. NaN / non-positive / missing → None.
 
-    SIH may publish a bogus DISTANCE_SENSOR that tracks relative altitude
-    (see issue #12). When ``relative_alt_m`` is within ``mirror_eps_m`` of the
-    reading and the reading is at least ``mirror_min_m``, treat as missing so
-    spray-hover stays honest. Low hover (~0.15-0.30 m) is kept even if it
-    matches relative_alt (real lidar can look like that).
+    This project only trusts short-range downward lidar for spray hover
+    (about 0.15-0.30 m). Readings at or above ``max_trust_m`` (default 1 m)
+    are treated as missing so SIH bogus streams (often ~relative alt, or a
+    high value while commanded low) cannot pretend to be AGL (issue #12).
+
+    Also drop when ``relative_alt_m`` is within ``mirror_eps_m`` of a reading
+    at least ``mirror_min_m`` (SIH relative-alt mirror). Low hover stays kept
+    even if it matches relative_alt (real lidar can look like that).
     """
     if current is None:
         return None
@@ -45,16 +49,14 @@ def distance_reading_m(
         return None
     if math.isnan(value) or value <= 0:
         return None
+    if value >= max_trust_m:
+        return None
     if relative_alt_m is not None:
         try:
             rel = float(relative_alt_m)
         except (TypeError, ValueError):
             rel = float("nan")
-        if (
-            not math.isnan(rel)
-            and value >= mirror_min_m
-            and abs(value - rel) <= mirror_eps_m
-        ):
+        if not math.isnan(rel) and value >= mirror_min_m and abs(value - rel) <= mirror_eps_m:
             return None
     return value
 
