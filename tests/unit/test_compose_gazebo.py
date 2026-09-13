@@ -25,3 +25,19 @@ def test_makefile_has_sitl_gz_targets():
     assert "sitl: smoke-video" in text
     # down tears both profiles
     assert "down: sitl-down sitl-gz-down" in text
+
+
+def test_makefile_start_targets_tear_other_profile_first():
+    """Both profiles use host networking — starting one must down the other (BugScout #21)."""
+    text = (REPO / "Makefile").read_text()
+    idx_gz = text.index("sitl-gz:")
+    idx_gz_down = text.index("sitl-gz-down:")
+    body_gz = text[idx_gz:idx_gz_down]
+    assert "sitl-down" in body_gz
+    assert "compose.gazebo.yaml up" in body_gz
+
+    idx_sitl = text.index("sitl: smoke-video")
+    idx_sitl_down = text.index("sitl-down:")
+    body_sitl = text[idx_sitl:idx_sitl_down]
+    assert "sitl-gz-down" in body_sitl
+    assert "docker compose up" in body_sitl
