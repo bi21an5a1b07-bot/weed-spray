@@ -31,6 +31,7 @@ Uses `tests/fakes.py` (`FakeVehicle`) so MAVSDK never starts. Each test module h
 - Backend HTTP on the same asyncio loop as mission tasks
 - Compose/port contracts, dashboard route strings, harness last-run table
 - extract_clip dry-run: hermetic tmp media (no gitignored backyard clip)
+- aws_uat scripts: budget_ok / start_host / stop_host with PATH stubs (no live AWS)
 
 ## Live accept (needs SITL)
 
