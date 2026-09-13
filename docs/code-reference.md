@@ -82,7 +82,7 @@ One plant. JSON field is `"class"` (alias of `class_name`). Fields: `id`, `class
 | Model | Role |
 |---|---|
 | `ConfirmEvent` | Confirm/reject row (`sitl_template` `confirms[]`) |
-| `HoverSample` | Spray-hover AGL sample; `missing=true` when no `DISTANCE_SENSOR` |
+| `HoverSample` | Spray-hover AGL sample; `missing=true` when lidar is absent or `distance_reading_m` returns `None` (incl. readings **≥ 1 m**) |
 | `PumpPulse` | One 0.75 s commanded pulse tied to a detection id |
 | `PumpOffEvent` | Failsafe/operator pump-off; `pump_commanded_off` must stay true |
 | `PhaseEvent` | Exported phase timeline (`scan`, `spray_hover`, `rtl`, …) |
@@ -91,7 +91,7 @@ One plant. JSON field is `"class"` (alias of `class_name`). Fields: `id`, `class
 
 ### `class Telemetry`
 
-Last MAVSDK snapshot: `connected`, `armed`, `in_air`, `lat`, `lon`, `relative_alt_m`, `heading_deg`, `distance_sensor_m`, `distance_sensor_missing` (true on SIH), `pump_value`, `flight_mode`, `rc_available`.
+Last MAVSDK snapshot: `connected`, `armed`, `in_air`, `lat`, `lon`, `relative_alt_m`, `heading_deg`, `distance_sensor_m`, `distance_sensor_missing` (true when no usable short-range reading — typical on SIH, including dropped **≥ 1 m** bogus streams), `pump_value`, `flight_mode`, `rc_available`.
 
 ### `class AppState`
 
@@ -121,9 +121,9 @@ Scan vertices inside `box`. Rows run north–south, alternating direction. `spac
 
 MAVSDK wrapper. PX4 listens for offboard APIs on UDP 14540 (we bind). Does **not** write `COM_RCL_EXCEPT` bit 2 or disable `NAV_RCL_ACT`.
 
-### `distance_reading_m(current) -> float | None`
+### `distance_reading_m(current, relative_alt_m=None, *, mirror_eps_m=0.5, mirror_min_m=1.0, max_trust_m=1.0) -> float | None`
 
-Parse lidar metres. `None`, non-numeric, NaN, or `<= 0` → `None` (log as missing). SIH has no lidar.
+Parse lidar metres for spray hover. `None`, non-numeric, NaN, or `<= 0` → `None` (treated as missing). Readings **≥ `max_trust_m`** (default **1 m**) → `None` so SIH bogus streams (often ~GPS/relative alt, e.g. ~12 m, or high while commanded low) cannot pretend to be AGL. Optional relative-alt mirror drop: when `relative_alt_m` is within `mirror_eps_m` of a reading at least `mirror_min_m`, return `None`; low hover (~0.15–0.30 m) stays kept even if it matches relative alt.
 
 ### `class Vehicle`
 
@@ -159,7 +159,7 @@ If `on_failsafe` is set, await it. `kind` is a `PumpOffEvent.type`.
 | `_track_armed` | `armed` | `telemetry.armed` |
 | `_track_in_air` | `in_air` | used for RC-first takeoff |
 | `_track_heading` | `heading` | `heading_deg` |
-| `_track_distance` | `distance_sensor` | parse metres; on exception or empty, stay `missing` |
+| `_track_distance` | `distance_sensor` | `distance_reading_m`; `None`/exception → `distance_sensor_missing` |
 
 #### `async Vehicle.upload_fence(box)`
 
@@ -205,7 +205,7 @@ Pump off, leave Offboard, Hold (or RTL if Hold fails).
 
 ## `src/weed_spray/backend/mission.py`
 
-Mission state machine: fence → scan → confirm → visit/pulse → RTL. Unconfirmed detections are never sprayed. Hover AGL uses `DISTANCE_SENSOR` or `missing`.
+Mission state machine: fence → scan → confirm → visit/pulse → RTL. Unconfirmed detections are never sprayed. Hover AGL uses parsed `DISTANCE_SENSOR` (short-range only; **≥ 1 m** → `missing`) or `missing`.
 
 ### `class Mission`
 
@@ -500,7 +500,7 @@ Clears `weed_spray.vision.main._boxes` before and after every test so injector s
 |---|---|
 | `tests/unit/test_geo.py` | NED→lat/lon, clockwise fence corners, lawnmower spacing |
 | `tests/unit/test_classes.py` | Class map matches `weeds.yaml`; no crabgrass |
-| `tests/unit/test_distance.py` | `distance_reading_m` NaN / ≤0 / junk → `None` |
+| `tests/unit/test_distance.py` | `distance_reading_m` NaN / ≤0 / junk / **≥ 1 m** / SIH mirrors → `None`; low hover kept |
 | `tests/unit/test_models.py` | `"class"` alias, confirm ids+decisions, pump-off type |
 | `tests/unit/test_mission.py` | Inject/confirm/reject, unconfirmed never sprayed, RC vs dashboard, kill/people, failsafe idle skip |
 | `tests/unit/test_train.py` | Empty dataset count; `--list-sources` does not download |

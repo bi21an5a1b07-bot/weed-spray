@@ -133,7 +133,7 @@ With all four processes up on EC2:
 
 ### Expected SIH result
 
-Identical honesty to [acceptance.md](acceptance.md). PX4 SIH has **no** `DISTANCE_SENSOR`. On the default `make sitl` path:
+Identical honesty to [acceptance.md](acceptance.md). Default PX4 SIH still expects an honest fail on hover AGL. SIH may publish a bogus `DISTANCE_SENSOR` (often tracking GPS / relative alt, e.g. ~12 m); the backend treats readings **≥ 1 m** as `missing` (`distance_reading_m` / room-agreed #14 tip). Real spray-hover lidar ~0.15–0.30 m is kept. On the default `make sitl` path:
 
 | | Expected |
 |---|---|
@@ -142,7 +142,7 @@ Identical honesty to [acceptance.md](acceptance.md). PX4 SIH has **no** `DISTANC
 | Steps 8–9 | `blocked` (first fail stops the grade) |
 | Step 10 | still runs if the vehicle armed |
 
-Do not invent rangefinder PX4 params to fake a green table. Exit `0` only with rangefinder data (hardware or a Gazebo lidar profile) — **not** default compose.
+Do not treat GPS / `vehicle_local_position.z` as AGL. Do not invent rangefinder PX4 params to fake a green table. Exit `0` only with a real rangefinder in the 0.15–0.30 m band (hardware or a Gazebo lidar profile) — **not** default compose.
 
 ## SprayPO UAT sequence (post-merge / on-demand)
 
