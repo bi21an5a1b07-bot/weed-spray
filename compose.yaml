@@ -1,3 +1,5 @@
+name: weed-spray-sih
+
 # weed-spray SITL — PX4 SIH + file RTSP only.
 # Contract: bot_files/loop.md
 # Host network so UDP 14540 lands on WSL. One vehicle.
