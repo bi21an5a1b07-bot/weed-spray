@@ -1,6 +1,6 @@
 # CLI, Makefile, and package scripts
 
-Host tools (Python 3.11, uv, Node 26) are pinned in `mise.toml`. After clone: `mise trust && mise install && mise run install`.
+Host tools (Python 3.11, uv, Node 26, github-cli 2) are pinned in `mise.toml`. After clone: `mise trust && mise install && mise run install`. Use `mise exec -- gh` to file unexpected SITL accept failures.
 
 Python entry points are declared in `pyproject.toml` `[project.scripts]`. After `uv sync` they are available as `uv run <name>`.
 
