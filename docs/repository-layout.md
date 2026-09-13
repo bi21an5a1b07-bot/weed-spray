@@ -3,7 +3,7 @@
 ```
 drone_control/
   compose.yaml              # PX4 SIH + MediaMTX + ffmpeg only
-  mise.toml                 # pin python 3.11, uv, node 26
+  mise.toml                 # pin python 3.11, uv, node 26, github-cli 2
   pyproject.toml            # uv package + [tool.ruff] + pytest
   GROK.md                   # Grok Build instructions (read this)
   AGENTS.md                 # pointer to GROK.md (auto-loaded by Grok TUI)

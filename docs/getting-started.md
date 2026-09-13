@@ -6,7 +6,7 @@
 - Host `ffmpeg` (apt) for `make smoke-video`; compose already ships a static ffmpeg for RTSP
 - Optional: NVIDIA GPU for later YOLO training (`uv sync --extra yolo`)
 
-mise pins **Python 3.11**, **uv**, and **Node 26** in `mise.toml`. It does **not** install FastAPI/MAVSDK (those are `uv sync`) or React (those are `npm install` in `dashboard/`). Docker is a host daemon, not a mise tool.
+mise pins **Python 3.11**, **uv**, **Node 26**, and **github-cli 2** in `mise.toml`. It does **not** install FastAPI/MAVSDK (those are `uv sync`) or React (those are `npm install` in `dashboard/`). Docker is a host daemon, not a mise tool.
 
 ## Install
 

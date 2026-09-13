@@ -59,7 +59,7 @@ How to ingest a pending delta: [`.grok/rules/bot-files.md`](.grok/rules/bot-file
 | `tests/` | pytest + `FakeVehicle` — **no live PX4** |
 | `compose.yaml` | PX4 SIH + MediaMTX + ffmpeg only |
 | `bot_files/` | Normative Bot contracts |
-| `mise.toml` | Pin Python 3.11, uv, Node 26 |
+| `mise.toml` | Pin Python 3.11, uv, Node 26, github-cli 2 |
 | `docs/` | Human docs; [`docs/code-reference.md`](docs/code-reference.md) for functions |
 
 ## Dev tools (mise)
@@ -67,13 +67,13 @@ How to ingest a pending delta: [`.grok/rules/bot-files.md`](.grok/rules/bot-file
 [`mise.toml`](mise.toml) is the pin file. Walkthrough: https://mise.jdx.dev/walkthrough.html
 
 ```bash
-mise trust && mise install    # python@3.11, uv@latest, node@26
+mise trust && mise install    # python@3.11, uv@latest, node@26, github-cli@2
 mise run install              # uv sync --extra dev + dashboard npm
 ```
 
 | Layer | Tool | Do |
 |---|---|---|
-| Host runtimes | Python 3.11, uv, Node 26 | `mise install` only |
+| Host runtimes | Python 3.11, uv, Node 26, github-cli 2 | `mise install` only |
 | Python packages | FastAPI, MAVSDK, pytest, Ruff | `uv sync --extra dev` (`pyproject.toml`) |
 | Dashboard packages | React, Vite | `npm --prefix dashboard install` |
 | YOLO (optional) | ultralytics | `uv sync --extra yolo` — not mise; dataset is empty |
