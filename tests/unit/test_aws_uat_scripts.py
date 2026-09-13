@@ -337,3 +337,29 @@ def test_stop_host_terminates_not_stop_only(bin_dir: Path, tmp_path: Path):
     assert "terminate-instances" in aws_log
     assert "stop-instances" not in aws_log
     assert "delete-volume" in aws_log
+
+
+def test_budget_ok_uses_us_east_1_for_budgets_and_alarms(bin_dir: Path, tmp_path: Path):
+    """AWS Budgets (+ billing alarms) are us-east-1-only; EC2 default stays us-west-2."""
+    log = tmp_path / "aws.log"
+    _install_aws_stub(bin_dir, log, "ok_under")
+    r = _run_script(
+        "budget_ok.sh",
+        env={
+            "AWS_REGION": "us-west-2",
+            "AWS_UAT_BUDGET_NAME": "weed-spray-sitl-uat",
+            "AWS_UAT_COST_CAP": "10",
+            "AWS_ACCOUNT_ID": "123456789012",
+        },
+        path_prefix=bin_dir,
+    )
+    assert r.returncode == 0, r.stderr
+    lines = log.read_text().strip().splitlines()
+    budget_lines = [ln for ln in lines if ln.startswith("budgets ")]
+    cw_lines = [ln for ln in lines if ln.startswith("cloudwatch ")]
+    assert budget_lines, lines
+    assert cw_lines, lines
+    for ln in budget_lines + cw_lines:
+        assert "--region us-east-1" in ln, ln
+    # must not rely on exporting default region to us-east-1 for these calls alone
+    assert not any(ln.startswith("ec2 ") for ln in lines)
