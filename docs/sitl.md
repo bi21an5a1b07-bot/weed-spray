@@ -27,7 +27,7 @@ Not Gazebo RTP 5600. Not `/dev/video`.
 Accurate profile for issue [#19](https://github.com/bi21an5a1b07-bot/weed-spray/issues/19) (first slice). **Does not** replace default `make sitl`.
 
 - Compose: `compose.gazebo.yaml`
-- Targets: `make sitl-gz` / `make sitl-gz-down`; `make down` tears SIH **and** Gazebo
+- Targets: `make sitl-gz` / `make sitl-gz-down`; `make down` tears SIH **and** Gazebo. Both profiles use host-network (UDP **14540** + MediaMTX): `make sitl` runs `sitl-gz-down` first; `make sitl-gz` runs `sitl-down` first — do not run both composes at once.
 - Image / model: `px4io/px4-sitl-gazebo:latest` with `PX4_SIM_MODEL=gz_x500_lidar_down`, `HEADLESS=1`
 - Also: MediaMTX. **No** ffmpeg / `smoke.mp4` publisher on this profile
 - WSL: `network_mode: host` + `extra_hosts: host.docker.internal:127.0.0.1` (same HEARTBEAT fix as SIH)
