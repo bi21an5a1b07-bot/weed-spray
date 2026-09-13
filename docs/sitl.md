@@ -20,25 +20,26 @@ The `px4io/px4-sitl` entrypoint rewrites mavlink `-t` to `host.docker.internal` 
 
 The dashboard does not play RTSP. It plays **HLS** at `/hls/cam/index.m3u8` (Vite → MediaMTX `:8888`). WebRTC `:8889` remains available but ICE from Windows→WSL often closes the peer connection.
 
-Not Gazebo RTP 5600. Not `/dev/video`.
+Default SIH path is not Gazebo RTP 5600 and not `/dev/video`. (On `make sitl-gz`, RTP `:5600` is cam ingest only — see below.)
 
 ## Opt-in Gazebo (`make sitl-gz`)
 
-Accurate profile for issue [#19](https://github.com/bi21an5a1b07-bot/weed-spray/issues/19) (first slice). **Does not** replace default `make sitl`.
+Accurate profile for issue [#19](https://github.com/bi21an5a1b07-bot/weed-spray/issues/19). **Does not** replace default `make sitl` (SIH file RTSP remains the light path).
 
-- Compose: `compose.gazebo.yaml`
-- Targets: `make sitl-gz` / `make sitl-gz-down`; `make down` tears SIH **and** Gazebo. Both profiles use host-network (UDP **14540** + MediaMTX): `make sitl` runs `sitl-gz-down` first; `make sitl-gz` runs `sitl-down` first — do not run both composes at once.
-- Image / model: `px4io/px4-sitl-gazebo:latest` with `PX4_SIM_MODEL=gz_x500_lidar_down`, `HEADLESS=1`
-- Also: MediaMTX. **No** ffmpeg / `smoke.mp4` publisher on this profile
+- Compose: `compose.gazebo.yaml` with project `name: weed-spray-gz` (SIH uses `name: weed-spray-sih` in `compose.yaml`)
+- Targets: `make sitl-gz` / `make sitl-gz-down` use `docker compose -p weed-spray-gz …`; SIH counterparts use `-p weed-spray-sih`. `make down` tears both. Host-network (UDP **14540** + MediaMTX): `make sitl` runs **smoke-video**, then `sitl-gz-down`, then SIH up; `make sitl-gz` runs `sitl-down` then Gazebo up — do not run both composes at once. Project isolation means one profile’s `down` cannot remove the other.
+- Images (exactly those in `compose.gazebo.yaml`; do not `docker pull` extras at runtime):
+  - `px4io/px4-sitl-gazebo:latest` with `PX4_SIM_MODEL=gz_x500_lidar_down`, `HEADLESS=1`
+  - `bluenviron/mediamtx:latest`
+  - `mwader/static-ffmpeg:7.1` as **`cam-bridge`** (not a smoke.mp4 publisher)
+- Model overlay: repo `sitl/gz/models/x500_lidar_down` merges downward `mono_cam` onto stock `gz_x500_lidar_down` (sourced from PX4-gazebo-models `x500_mono_cam_down`)
+- **Vehicle camera is wired:** Gazebo GstCameraSystem UDP RTP **`:5600`** (ingest only — not a second GCS path) → `cam-bridge` → **`rtsp://127.0.0.1:8554/cam`** (one GCS URL). Dashboard still HLS `:8888`. **No** `smoke.mp4` on this profile.
 - WSL: `network_mode: host` + `extra_hosts: host.docker.internal:127.0.0.1` (same HEARTBEAT fix as SIH)
 - Do not start Gazebo on the shared Grok Bot VM — operator WSL only (AWS later only if RAM allows)
-- Images stay exactly those in `compose.gazebo.yaml`; do not `docker pull` extras at runtime
 
-**Vehicle camera → `8554/cam` is not wired** (stock `gz_x500_lidar_down` has no cam). Follow-up on #19.
+**Hover / lidar-hold blocker:** PX4 `MPC_ALT_MODE` terrain hold is **Position/Altitude only, not Offboard** ([PX4 terrain following / holding](https://docs.px4.io/main/en/flying/terrain_following_holding.html)). Do **not** fake AGL with local `z`. Do not invent `EKF2_RNG_*`, `COM_RCL_EXCEPT`, `NAV_RCL_ACT=0`, or `COM_RC_IN_MODE=4`. Offboard lidar-hold remains open on #19.
 
-**Hover / lidar-hold blocker:** PX4 `MPC_ALT_MODE` terrain hold is **Position/Altitude only, not Offboard** ([PX4 terrain following / holding](https://docs.px4.io/main/en/flying/terrain_following_holding.html)). Do **not** fake AGL with local `z`. Do not invent `EKF2_RNG_*`, `COM_RCL_EXCEPT`, `NAV_RCL_ACT=0`, or `COM_RC_IN_MODE=4`.
-
-Live gz `make accept` exit `0` is **not** available yet. SIH bar unchanged (exit `1`, step 7 missing). See [acceptance.md](acceptance.md).
+Live gz `make accept` exit `0` is **not** available yet (cam path landed; Offboard lidar-hold still open). SIH bar unchanged (exit `1`, step 7 missing). See [acceptance.md](acceptance.md).
 
 ## Accept script
 

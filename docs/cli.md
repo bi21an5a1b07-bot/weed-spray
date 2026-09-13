@@ -32,10 +32,10 @@ Run from the repo root. `.PHONY` targets:
 
 | Target | Action |
 |---|---|
-| `make sitl` | Tear Gazebo down first, then build `media/smoke.mp4` if missing and `docker compose up -d` (SIH default) |
-| `make sitl-gz` | Tear SIH down first, then opt-in Gazebo: `docker compose -f compose.gazebo.yaml up -d` (`gz_x500_lidar_down`) |
-| `make sitl-down` | `docker compose down` (SIH only) |
-| `make sitl-gz-down` | Tear down Gazebo compose only |
+| `make sitl` | Build `media/smoke.mp4` if missing (`smoke-video`), then `sitl-gz-down`, then `docker compose -p weed-spray-sih -f compose.yaml up -d` (SIH default) |
+| `make sitl-gz` | `sitl-down`, then `docker compose -p weed-spray-gz -f compose.gazebo.yaml up -d` (`gz_x500_lidar_down`) |
+| `make sitl-down` | `docker compose -p weed-spray-sih -f compose.yaml down` (SIH only) |
+| `make sitl-gz-down` | `docker compose -p weed-spray-gz -f compose.gazebo.yaml down` (Gazebo only) |
 | `make down` | Tear down SIH **and** Gazebo (`sitl-down` + `sitl-gz-down`) |
 | `make smoke-video` | `ffmpeg` `testsrc` → `media/smoke.mp4` (8 s, 1280×720, 15 fps) |
 | `make inbox-frames` | 1 fps unlabeled stills from the backyard clip into `weeds/inbox/` |
@@ -49,7 +49,7 @@ Run from the repo root. `.PHONY` targets:
 | `make fmt` | `uv run ruff format src tests` |
 | `make check` | ruff check + format `--check` + pytest |
 
-`make sitl` starts PX4 SIH, MediaMTX, and the ffmpeg publisher (after `sitl-gz-down`). `make sitl-gz` is opt-in Gazebo + MediaMTX (no smoke.mp4; after `sitl-down`). Both are host-network — do not run together. Backend, vision, and dashboard stay on the host. See [sitl.md](sitl.md).
+`make sitl` builds smoke if missing, then tears Gazebo (`sitl-gz-down`), then starts PX4 SIH + MediaMTX + the ffmpeg publisher (`-p weed-spray-sih`). `make sitl-gz` tears SIH (`sitl-down`), then starts opt-in Gazebo + MediaMTX + `cam-bridge` (`-p weed-spray-gz`; no smoke.mp4). Compose `name:` / `-p` isolate the stacks so one profile’s `down` cannot tear the other. Both are host-network — do not run together. Backend, vision, and dashboard stay on the host. See [sitl.md](sitl.md).
 
 ## Dashboard npm scripts
 
