@@ -64,7 +64,7 @@ make accept
 
 The script prints the markdown table and writes `--out` (default `var/last-run.md`).
 
-**Default SIH stack:** expect exit code `1`. Step 7 fails (`DISTANCE_SENSOR` missing → hover `missing`); steps 8–9 are then `blocked`. That is a correct SIH run, not a setup failure. Exit `0` only when every step passes (needs rangefinder data — not default compose).
+**Default SIH stack:** expect exit code `1`. Step 7 fails (hover samples `missing` — no usable short-range lidar; SIH may emit bogus `DISTANCE_SENSOR` readings **≥ 1 m** that the backend drops); steps 8–9 are then `blocked`. That is a correct SIH run, not a setup failure. Exit `0` only when every step passes (needs real rangefinder in the 0.15–0.30 m band — not default compose).
 
 ## The 10 steps (what the harness does)
 
@@ -89,7 +89,7 @@ First fail stops further grading (`blocked`). Step 10 still runs if the vehicle 
 
 ## Expected SIH result
 
-PX4 SIH has **no** `DISTANCE_SENSOR`. On the default `make sitl` path:
+Default PX4 SIH still expects an honest fail on hover AGL. SIH may publish a bogus `DISTANCE_SENSOR` (often tracking GPS / relative alt, e.g. ~12 m); the backend treats readings **≥ 1 m** as `missing` (`distance_reading_m` / room-agreed #14 tip). Real spray-hover lidar ~0.15–0.30 m is kept. On the default `make sitl` path:
 
 | | Expected |
 |---|---|
@@ -100,7 +100,7 @@ PX4 SIH has **no** `DISTANCE_SENSOR`. On the default `make sitl` path:
 
 Do not treat GPS / `vehicle_local_position.z` as AGL. Do not invent rangefinder PX4 params to fake a green table. "Good enough for SIH" = processes up + steps 1–6 and 10 behaving as above + honest step 7 fail — **not** `make accept` exit `0`.
 
-A full green table (exit `0`) needs rangefinder data (hardware or a Gazebo lidar profile). That is **not** the default compose.
+Exit `0` only with a real rangefinder in the 0.15–0.30 m band (hardware or a Gazebo lidar profile). That is **not** the default compose.
 
 ## After the run
 
