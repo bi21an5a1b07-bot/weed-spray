@@ -30,7 +30,7 @@ Hard cap for tagged weed-spray UAT resources: **$10 USD per calendar month**.
 
 Before every start, run **`scripts/aws_uat/budget_ok.sh`** (lands with Spray Dev). Non-zero exit is a **hard stop**: do not start EC2; wait until the next calendar month. The script must exit non-zero when month-to-date actual **or** forecast is **>= $10**, or when budget `weed-spray-sitl-uat` is in ALARM.
 
-`budget_ok.sh` must call AWS Budgets and billing CloudWatch alarms with **`--region us-east-1`** (AWS Budgets is **us-east-1 only**). EC2 launch/terminate stays **`us-west-2`**. Do **not** set `AWS_DEFAULT_REGION=us-west-2` for the budgets/alarms calls — pass `--region us-east-1` on those invocations.
+`budget_ok.sh` keeps **`AWS_DEFAULT_REGION=us-west-2`** (EC2 launch/terminate). Call AWS Budgets and billing CloudWatch alarms with explicit **`--region us-east-1`** (AWS Budgets is **us-east-1 only**). Do **not** point the default region at us-east-1 just to read budgets.
 
 ## Human AWS setup (Brian / operator, once)
 
@@ -159,7 +159,7 @@ These paths are locked names; **scripts land with Spray Dev** (Refs #10). They a
 
 | Script | Role |
 |---|---|
-| `scripts/aws_uat/budget_ok.sh` | Exit 0 only if month-to-date actual **and** forecast are **< $10** and budget `weed-spray-sitl-uat` is not in ALARM; else exit 1 (hard stop at **>= $10** actual or forecast, or ALARM). Call Budgets + billing CW alarms with **`--region us-east-1`**; EC2 stays **`us-west-2`** |
+| `scripts/aws_uat/budget_ok.sh` | Exit 0 only if month-to-date actual **and** forecast are **< $10** and budget `weed-spray-sitl-uat` is not in ALARM; else exit 1 (hard stop at **>= $10** actual or forecast, or ALARM). Keep **`AWS_DEFAULT_REGION=us-west-2`**; pass **`--region us-east-1`** on Budgets + billing CW alarms only |
 | `scripts/aws_uat/start_host.sh` | Launch **only** from template `weed-spray-sitl-uat` (no resume-stopped default); wait SSH; on virgin LT box: `git clone` bi21an5a1b07-bot/weed-spray → `uv sync --extra dev` (+ npm in `dashboard/` if needed) → `make sitl`; remind host apps. AMI bake = `git`, `mise`/`uv`, `node`/`npm`, host `ffmpeg`, Docker (compose-capable); script does **not** apt-install toolchain each run; **no `git pull`-only path** |
 | `scripts/aws_uat/stop_host.sh` | Compose down; **terminate** instance; **delete** tagged costed UAT resources (EBS/EIP/NAT/etc. if present) so ongoing UAT charges are **zero** by default. Stopped-but-EBS-billing is not the default. Dormant spend only if Brian accepts in writing later (default none). |
 
