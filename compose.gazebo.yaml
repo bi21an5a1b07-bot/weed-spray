@@ -6,8 +6,8 @@ name: weed-spray-gz
 #
 # Pin: px4io/px4-sitl-gazebo — https://docs.px4.io/main/en/simulation/px4_sitl_prebuilt_packages
 # Model: gz_x500_lidar_down (4016) with repo overlay adding downward mono_cam.
-# Camera path: GstCameraSystem UDP RTP :5600 → cam-bridge → rtsp://127.0.0.1:8554/cam
-#   (one GCS URL; not a second dashboard path). No smoke.mp4.
+# Camera: GstCameraSystem UDP RTP :5600 (H264 PT 96) → MediaMTX udp+rtp + rtpSDP
+#   → rtsp://127.0.0.1:8554/cam (one GCS URL). No smoke.mp4. No bare ffmpeg rtp://.
 # WSL: network_mode host + host.docker.internal → 127.0.0.1. HEADLESS=1.
 # Do not docker pull extras beyond this file.
 
@@ -19,7 +19,6 @@ services:
     environment:
       PX4_SIM_MODEL: gz_x500_lidar_down
       HEADLESS: "1"
-    # Overlay stock x500_lidar_down with lidar+cam merge (PX4-gazebo-models sourced).
     volumes:
       - ./sitl/gz/models/x500_lidar_down:/opt/px4-gazebo/share/gz/models/x500_lidar_down:ro
     extra_hosts:
@@ -33,34 +32,6 @@ services:
     container_name: weed-spray-mediamtx-gz
     network_mode: host
     volumes:
-      - ./sitl/mediamtx.yml:/mediamtx.yml:ro
+      - ./sitl/mediamtx-gazebo.yml:/mediamtx.yml:ro
     command: ["/mediamtx.yml"]
     restart: unless-stopped
-
-  # Republish Gazebo RTP :5600 into the single MediaMTX path the GCS already uses.
-  cam-bridge:
-    image: mwader/static-ffmpeg:7.1
-    container_name: weed-spray-cam-bridge-gz
-    network_mode: host
-    depends_on:
-      - mediamtx
-      - px4
-    restart: on-failure
-    command:
-      - -hide_banner
-      - -loglevel
-      - warning
-      - -fflags
-      - nobuffer
-      - -flags
-      - low_delay
-      - -i
-      - rtp://127.0.0.1:5600?localport=5600
-      - -c:v
-      - copy
-      - -an
-      - -f
-      - rtsp
-      - -rtsp_transport
-      - tcp
-      - rtsp://127.0.0.1:8554/cam

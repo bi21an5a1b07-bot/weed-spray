@@ -15,9 +15,8 @@ def test_compose_gazebo_exists_and_pins_lidar_down():
     assert "host.docker.internal:127.0.0.1" in text
     assert "rtsp-pub" not in text
     assert "/media/smoke" not in text
-    assert "cam-bridge" in text
-    assert "8554/cam" in text
-    assert "5600" in text
+    assert "cam-bridge" not in text  # MediaMTX ingests RTP directly
+    assert "mediamtx-gazebo.yml" in text
 
 
 def test_compose_projects_are_isolated():
@@ -36,6 +35,16 @@ def test_lidar_cam_overlay_model_present():
     assert "gpu_lidar" in text
     assert "mono_cam" in text
     assert "CameraJoint" in text
+
+
+def test_mediamtx_gazebo_ingests_rtp_with_sdp():
+    """GstCameraSystem H264 PT 96 needs udp+rtp + rtpSDP (BugScout #23)."""
+    text = (REPO / "sitl/mediamtx-gazebo.yml").read_text()
+    assert "udp+rtp://127.0.0.1:5600" in text
+    assert "rtpSDP:" in text
+    assert "payload" not in text.lower() or "96" in text
+    assert "a=rtpmap:96 H264/90000" in text
+    assert "source: publisher" not in text  # SIH file publisher is separate yml
 
 
 def test_makefile_has_sitl_gz_targets():
