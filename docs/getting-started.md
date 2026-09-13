@@ -22,7 +22,8 @@ Without mise, the same Python/Node work is `uv sync --extra dev` and `(cd dashbo
 ## SITL (software-in-the-loop)
 
 ```bash
-make sitl                 # PX4 SIH + MediaMTX + ffmpeg file RTSP
+make sitl                 # default: PX4 SIH + MediaMTX + ffmpeg file RTSP
+# make sitl-gz            # opt-in Gazebo gz_x500_lidar_down (issue #19; see sitl.md)
 uv run weed-spray-vision  # injector :8090
 uv run weed-spray         # backend  :8000
 (cd dashboard && npm run dev)  # UI :8080

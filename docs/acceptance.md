@@ -6,6 +6,15 @@ This is **not** `make check` (ruff + pytest with `FakeVehicle`). That gate never
 
 Remote AWS EC2 operator host path (SprayPO start/stop, $10/mo cap): [acceptance-aws.md](acceptance-aws.md). WSL remains the primary laptop path.
 
+## SIH vs opt-in Gazebo
+
+| Path | How | Accept bar today |
+|---|---|---|
+| **SIH (default)** | `make sitl` (`compose.yaml`) | Exit `1`; step 7 missing / fail — honest SIH bar |
+| **Gazebo (opt-in)** | `make sitl-gz` (`compose.gazebo.yaml`) | Full-green **not yet** — vehicle cam → `8554/cam` and Offboard lidar-hold still open on [#19](https://github.com/bi21an5a1b07-bot/weed-spray/issues/19). Do **not** claim exit `0` |
+
+Default `make sitl` is unchanged. Do not start Gazebo on the shared bot VM. Details: [sitl.md](sitl.md).
+
 ## What "green" means
 
 Two different bars:
@@ -100,12 +109,12 @@ Default PX4 SIH still expects an honest fail on hover AGL. SIH may publish a bog
 
 Do not treat GPS / `vehicle_local_position.z` as AGL. Do not invent rangefinder PX4 params to fake a green table. "Good enough for SIH" = processes up + steps 1–6 and 10 behaving as above + honest step 7 fail — **not** `make accept` exit `0`.
 
-Exit `0` only with a real rangefinder in the 0.15–0.30 m band (hardware or a Gazebo lidar profile). That is **not** the default compose.
+Exit `0` only with a real rangefinder in the 0.15–0.30 m band (hardware, or a future Gazebo path once vehicle cam + Offboard lidar-hold land on #19). Opt-in `make sitl-gz` first slice does **not** deliver that yet. Default compose remains SIH.
 
 ## After the run
 
 1. Read `var/last-run.md` (step / result / notes).
-2. Tear down Docker when done: `make down` (or `make sitl-down`).
+2. Tear down Docker when done: `make down` (SIH **and** Gazebo). Or `make sitl-down` / `make sitl-gz-down` for one profile.
 3. Host processes: Ctrl-C the vision, backend, and dashboard terminals.
 
 ## Do not

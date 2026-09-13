@@ -9,8 +9,8 @@ Start at the repo [`README.md`](../README.md). Normative product rules live in `
 | [Getting started](getting-started.md) | mise, install, SITL, dashboard, tests |
 | [Architecture](architecture.md) | Processes, ports, mission sequence |
 | [HTTP API](api.md) | Backend `:8000` and vision `:8090` |
-| [SITL](sitl.md) | Docker SIH, RTSP, accept script |
-| [Acceptance testing](acceptance.md) | Live SITL 10-step make-accept runbook |
+| [SITL](sitl.md) | Docker SIH (default) + opt-in Gazebo `sitl-gz`, RTSP, accept |
+| [Acceptance testing](acceptance.md) | Live SITL 10-step make-accept; SIH vs gz bars |
 | [Acceptance testing (AWS)](acceptance-aws.md) | Remote EC2 operator host SITL UAT ($10/mo cap) |
 | [Vision](vision.md) | Frozen classes, injector, training |
 | [Hardware](hardware.md) | Kakute / Pi / pump mapping |

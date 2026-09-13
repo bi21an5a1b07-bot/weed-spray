@@ -14,6 +14,10 @@ Host/automation scripts `scripts/aws_uat/{budget_ok,start_host,stop_host}.sh` ar
 | **Brian WSL** | Full live SITL (`make sitl` + host apps + `make accept`) | Primary laptop path — [acceptance.md](acceptance.md) |
 | **AWS EC2 operator host** | Same full live SITL stack as WSL, launch-template start + full teardown | This runbook — SprayPO calls `scripts/aws_uat/*.sh`; Spray Dev owns those scripts |
 
+## Gazebo on AWS (caution)
+
+Opt-in Gazebo (`make sitl-gz` / `compose.gazebo.yaml`) is **RAM-heavy** (~25 GB host per [#19](https://github.com/bi21an5a1b07-bot/weed-spray/issues/19)). A cheap `t3.large` UAT host may **not** fit. Keep the **$10/mo** cap and full teardown; do **not** leave Gazebo VMs running. **SIH** (`make sitl`) remains the AWS path unless the instance has enough RAM.
+
 ## Cost cap ($10 USD / calendar month)
 
 Hard cap for tagged weed-spray UAT resources: **$10 USD per calendar month**.

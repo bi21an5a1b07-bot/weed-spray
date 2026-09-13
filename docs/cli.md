@@ -32,8 +32,11 @@ Run from the repo root. `.PHONY` targets:
 
 | Target | Action |
 |---|---|
-| `make sitl` | Build `media/smoke.mp4` if missing, then `docker compose up -d` |
-| `make sitl-down` / `make down` | `docker compose down` |
+| `make sitl` | Tear Gazebo down first, then build `media/smoke.mp4` if missing and `docker compose up -d` (SIH default) |
+| `make sitl-gz` | Tear SIH down first, then opt-in Gazebo: `docker compose -f compose.gazebo.yaml up -d` (`gz_x500_lidar_down`) |
+| `make sitl-down` | `docker compose down` (SIH only) |
+| `make sitl-gz-down` | Tear down Gazebo compose only |
+| `make down` | Tear down SIH **and** Gazebo (`sitl-down` + `sitl-gz-down`) |
 | `make smoke-video` | `ffmpeg` `testsrc` → `media/smoke.mp4` (8 s, 1280×720, 15 fps) |
 | `make inbox-frames` | 1 fps unlabeled stills from the backyard clip into `weeds/inbox/` |
 | `make promote-inbox` | Copy boxed backyard stills into `weeds/dataset/{train,val}` |
@@ -46,7 +49,7 @@ Run from the repo root. `.PHONY` targets:
 | `make fmt` | `uv run ruff format src tests` |
 | `make check` | ruff check + format `--check` + pytest |
 
-`make sitl` starts **only** PX4 SIH, MediaMTX, and the ffmpeg publisher. Backend, vision, and dashboard stay on the host.
+`make sitl` starts PX4 SIH, MediaMTX, and the ffmpeg publisher (after `sitl-gz-down`). `make sitl-gz` is opt-in Gazebo + MediaMTX (no smoke.mp4; after `sitl-down`). Both are host-network — do not run together. Backend, vision, and dashboard stay on the host. See [sitl.md](sitl.md).
 
 ## Dashboard npm scripts
 

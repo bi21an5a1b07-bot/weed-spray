@@ -1,10 +1,10 @@
 # SITL
 
-Contract: `bot_files/sitl_loop.md`. Compose: `compose.yaml`.
+Contract: `bot_files/sitl_loop.md`. Default compose: `compose.yaml` (SIH). Opt-in Gazebo: `compose.gazebo.yaml`.
 
-## Images
+## Images (default SIH)
 
-Only these three (do not `docker pull` extras at runtime):
+Only these three on `compose.yaml` (do not `docker pull` extras at runtime):
 
 - `px4io/px4-sitl:latest` with `PX4_SIM_MODEL=sihsim_quadx`
 - `bluenviron/mediamtx:latest`
@@ -21,6 +21,24 @@ The `px4io/px4-sitl` entrypoint rewrites mavlink `-t` to `host.docker.internal` 
 The dashboard does not play RTSP. It plays **HLS** at `/hls/cam/index.m3u8` (Vite → MediaMTX `:8888`). WebRTC `:8889` remains available but ICE from Windows→WSL often closes the peer connection.
 
 Not Gazebo RTP 5600. Not `/dev/video`.
+
+## Opt-in Gazebo (`make sitl-gz`)
+
+Accurate profile for issue [#19](https://github.com/bi21an5a1b07-bot/weed-spray/issues/19) (first slice). **Does not** replace default `make sitl`.
+
+- Compose: `compose.gazebo.yaml`
+- Targets: `make sitl-gz` / `make sitl-gz-down`; `make down` tears SIH **and** Gazebo. Both profiles use host-network (UDP **14540** + MediaMTX): `make sitl` runs `sitl-gz-down` first; `make sitl-gz` runs `sitl-down` first — do not run both composes at once.
+- Image / model: `px4io/px4-sitl-gazebo:latest` with `PX4_SIM_MODEL=gz_x500_lidar_down`, `HEADLESS=1`
+- Also: MediaMTX. **No** ffmpeg / `smoke.mp4` publisher on this profile
+- WSL: `network_mode: host` + `extra_hosts: host.docker.internal:127.0.0.1` (same HEARTBEAT fix as SIH)
+- Do not start Gazebo on the shared Grok Bot VM — operator WSL only (AWS later only if RAM allows)
+- Images stay exactly those in `compose.gazebo.yaml`; do not `docker pull` extras at runtime
+
+**Vehicle camera → `8554/cam` is not wired** (stock `gz_x500_lidar_down` has no cam). Follow-up on #19.
+
+**Hover / lidar-hold blocker:** PX4 `MPC_ALT_MODE` terrain hold is **Position/Altitude only, not Offboard** ([PX4 terrain following / holding](https://docs.px4.io/main/en/flying/terrain_following_holding.html)). Do **not** fake AGL with local `z`. Do not invent `EKF2_RNG_*`, `COM_RCL_EXCEPT`, `NAV_RCL_ACT=0`, or `COM_RC_IN_MODE=4`.
+
+Live gz `make accept` exit `0` is **not** available yet. SIH bar unchanged (exit `1`, step 7 missing). See [acceptance.md](acceptance.md).
 
 ## Accept script
 
