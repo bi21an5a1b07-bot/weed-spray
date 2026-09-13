@@ -22,8 +22,25 @@ FailsafeHandler = Callable[[str], Awaitable[None]]
 log = logging.getLogger("weed_spray.vehicle")
 
 
-def distance_reading_m(current: object) -> float | None:
-    """SIH has no lidar. NaN / non-positive / missing → None (log as missing)."""
+def distance_reading_m(
+    current: object,
+    relative_alt_m: float | None = None,
+    *,
+    mirror_eps_m: float = 0.5,
+    mirror_min_m: float = 1.0,
+    max_trust_m: float = 1.0,
+) -> float | None:
+    """Parse lidar metres. NaN / non-positive / missing → None.
+
+    This project only trusts short-range downward lidar for spray hover
+    (about 0.15-0.30 m). Readings at or above ``max_trust_m`` (default 1 m)
+    are treated as missing so SIH bogus streams (often ~relative alt, or a
+    high value while commanded low) cannot pretend to be AGL (issue #12).
+
+    Also drop when ``relative_alt_m`` is within ``mirror_eps_m`` of a reading
+    at least ``mirror_min_m`` (SIH relative-alt mirror). Low hover stays kept
+    even if it matches relative_alt (real lidar can look like that).
+    """
     if current is None:
         return None
     try:
@@ -32,6 +49,15 @@ def distance_reading_m(current: object) -> float | None:
         return None
     if math.isnan(value) or value <= 0:
         return None
+    if value >= max_trust_m:
+        return None
+    if relative_alt_m is not None:
+        try:
+            rel = float(relative_alt_m)
+        except (TypeError, ValueError):
+            rel = float("nan")
+        if not math.isnan(rel) and value >= mirror_min_m and abs(value - rel) <= mirror_eps_m:
+            return None
     return value
 
 
@@ -148,10 +174,13 @@ class Vehicle:
             self._telem.heading_deg = att.heading_deg
 
     async def _track_distance(self) -> None:
-        """Subscribe to DISTANCE_SENSOR. SIH typically never publishes; stay missing."""
+        """Subscribe to DISTANCE_SENSOR. SIH has no lidar; relative-alt mirrors → missing."""
         try:
             async for dist in self.drone.telemetry.distance_sensor():
-                parsed = distance_reading_m(getattr(dist, "current_distance_m", None))
+                parsed = distance_reading_m(
+                    getattr(dist, "current_distance_m", None),
+                    self._telem.relative_alt_m,
+                )
                 if parsed is None:
                     self._telem.distance_sensor_missing = True
                     self._telem.distance_sensor_m = None
