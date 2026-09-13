@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Launch virgin EC2 from launch template weed-spray-sitl-uat only, then
 # clone → uv sync --extra dev → npm (dashboard) → make sitl.
+# Any failure after run-instances terminates the instance (no orphan UAT bill).
 # Contract: docs/acceptance-aws.md
 set -euo pipefail
 
@@ -14,6 +15,21 @@ REPO_URL="${AWS_UAT_REPO_URL:-https://github.com/bi21an5a1b07-bot/weed-spray.git
 REPO_DIR="${AWS_UAT_REPO_DIR:-weed-spray}"
 
 export AWS_DEFAULT_REGION="${REGION}"
+
+INSTANCE_ID=""
+
+_start_host_cleanup() {
+  local rc=$?
+  trap - EXIT
+  if [[ "${rc}" -ne 0 && -n "${INSTANCE_ID}" ]]; then
+    echo "start_host: post-launch failure (rc=${rc}); tearing down ${INSTANCE_ID}" >&2
+    # Prefer full tagged teardown (terminate + delete costed leftovers).
+    if ! AWS_UAT_STATE_DIR="${STATE_DIR}" bash "${ROOT}/stop_host.sh"; then
+      aws ec2 terminate-instances --instance-ids "${INSTANCE_ID}" >/dev/null || true
+    fi
+  fi
+  exit "${rc}"
+}
 
 bash "${ROOT}/budget_ok.sh"
 
@@ -33,6 +49,7 @@ run_json="$(aws ec2 run-instances \
 INSTANCE_ID="$(RUN_JSON="${run_json}" python3 -c 'import json,os; print(json.loads(os.environ["RUN_JSON"])["Instances"][0]["InstanceId"])')"
 echo "${INSTANCE_ID}" > "${STATE_DIR}/instance_id"
 echo "start_host: instance ${INSTANCE_ID}"
+trap _start_host_cleanup EXIT
 
 HOST=""
 for _ in $(seq 1 60); do
@@ -93,3 +110,6 @@ remind: start host apps on the EC2 box (not the bot VM):
   3) make dashboard # :8080
 default SprayPO reachability: ssh -L 8000:127.0.0.1:8000 -L 8080:127.0.0.1:8080 -L 8090:127.0.0.1:8090 ${SSH_USER}@${HOST}
 MSG
+
+trap - EXIT
+exit 0

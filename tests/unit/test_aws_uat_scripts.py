@@ -411,3 +411,41 @@ def test_stop_host_terminates_all_tagged_instances(bin_dir: Path, tmp_path: Path
     joined = " ".join(term_lines)
     assert "i-testuat001" in joined
     assert "i-testuat002" in joined
+
+
+def test_start_host_terminates_on_fail_after_launch(bin_dir: Path, tmp_path: Path):
+    """After run-instances, any failure must terminate — no orphan UAT bill."""
+    log = tmp_path / "aws.log"
+    _install_aws_stub(bin_dir, log, "launch")
+    # SSH always fails (bootstrap / connectivity)
+    _write_exec(
+        bin_dir / "ssh",
+        """#!/usr/bin/env bash
+set -euo pipefail
+echo "ssh fail $*" >&2
+exit 1
+""",
+    )
+    (tmp_path / "id").write_text("fake-key\n")
+    r = _run_script(
+        "start_host.sh",
+        env={
+            "AWS_REGION": "us-west-2",
+            "AWS_UAT_BUDGET_NAME": "weed-spray-sitl-uat",
+            "AWS_UAT_COST_CAP": "10",
+            "AWS_UAT_LAUNCH_TEMPLATE": "weed-spray-sitl-uat",
+            "AWS_ACCOUNT_ID": "123456789012",
+            "AWS_UAT_SSH_USER": "ubuntu",
+            "AWS_UAT_SSH_KEY": str(tmp_path / "id"),
+            "AWS_UAT_STATE_DIR": str(tmp_path / "state"),
+            "AWS_UAT_DRY_BOOTSTRAP": "1",
+            "AWS_UAT_SKIP_SSH_WAIT": "1",
+            "AWS_UAT_POLL_SECONDS": "0",
+        },
+        path_prefix=bin_dir,
+    )
+    assert r.returncode != 0
+    aws_log = log.read_text()
+    assert "run-instances" in aws_log
+    assert "terminate-instances" in aws_log
+    assert "i-testuat001" in aws_log
