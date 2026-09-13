@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Compose down, terminate instance, delete tagged costed UAT leftovers.
+# Compose down, terminate ALL tagged UAT instances, delete tagged costed leftovers.
 # Default teardown = terminate/delete (not stop-keep-EBS).
 # Contract: docs/acceptance-aws.md
 set -euo pipefail
@@ -14,11 +14,7 @@ PURPOSE_TAG="${AWS_UAT_PURPOSE_TAG:-sitl-uat}"
 
 export AWS_DEFAULT_REGION="${REGION}"
 
-INSTANCE_ID=""
 HOST=""
-if [[ -f "${STATE_DIR}/instance_id" ]]; then
-  INSTANCE_ID="$(tr -d '[:space:]' < "${STATE_DIR}/instance_id")"
-fi
 if [[ -f "${STATE_DIR}/host" ]]; then
   HOST="$(tr -d '[:space:]' < "${STATE_DIR}/host")"
 fi
@@ -29,21 +25,39 @@ if [[ -n "${HOST}" && -n "${SSH_KEY}" ]]; then
     "cd weed-spray 2>/dev/null && docker compose down || true" || true
 fi
 
-if [[ -z "${INSTANCE_ID}" ]]; then
-  INSTANCE_ID="$(aws ec2 describe-instances \
-    --filters "Name=tag:Project,Values=${PROJECT_TAG}" \
-              "Name=tag:Purpose,Values=${PURPOSE_TAG}" \
-              "Name=instance-state-name,Values=pending,running,stopping,stopped" \
-    --query 'Reservations[].Instances[].InstanceId' \
-    --output text | awk '{print $1}')"
+# Union: state file id (if any) + every tagged UAT instance still billable.
+declare -a IDS=()
+if [[ -f "${STATE_DIR}/instance_id" ]]; then
+  state_id="$(tr -d '[:space:]' < "${STATE_DIR}/instance_id")"
+  if [[ -n "${state_id}" && "${state_id}" != "None" ]]; then
+    IDS+=("${state_id}")
+  fi
 fi
 
-if [[ -n "${INSTANCE_ID}" && "${INSTANCE_ID}" != "None" ]]; then
-  echo "stop_host: terminate-instances ${INSTANCE_ID}"
-  aws ec2 terminate-instances --instance-ids "${INSTANCE_ID}" >/dev/null
-  aws ec2 wait instance-terminated --instance-ids "${INSTANCE_ID}" 2>/dev/null || true
+tagged="$(aws ec2 describe-instances \
+  --filters "Name=tag:Project,Values=${PROJECT_TAG}" \
+            "Name=tag:Purpose,Values=${PURPOSE_TAG}" \
+            "Name=instance-state-name,Values=pending,running,stopping,stopped" \
+  --query 'Reservations[].Instances[].InstanceId' \
+  --output text)"
+# shellcheck disable=SC2206
+for id in ${tagged}; do
+  if [[ -n "${id}" && "${id}" != "None" ]]; then
+    IDS+=("${id}")
+  fi
+done
+
+# Deduplicate
+UNIQUE_IDS="$(printf '%s\n' "${IDS[@]:-}" | awk 'NF && !seen[$0]++')"
+
+if [[ -z "${UNIQUE_IDS}" ]]; then
+  echo "stop_host: no instance ids found (continuing to sweep tagged volumes)" >&2
 else
-  echo "stop_host: no instance id found (continuing to sweep tagged volumes)" >&2
+  # shellcheck disable=SC2086
+  set -- ${UNIQUE_IDS}
+  echo "stop_host: terminate-instances $*"
+  aws ec2 terminate-instances --instance-ids "$@" >/dev/null
+  aws ec2 wait instance-terminated --instance-ids "$@" 2>/dev/null || true
 fi
 
 vol_ids="$(aws ec2 describe-volumes \
