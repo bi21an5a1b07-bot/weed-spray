@@ -30,6 +30,8 @@ Hard cap for tagged weed-spray UAT resources: **$10 USD per calendar month**.
 
 Before every start, run **`scripts/aws_uat/budget_ok.sh`** (lands with Spray Dev). Non-zero exit is a **hard stop**: do not start EC2; wait until the next calendar month. The script must exit non-zero when month-to-date actual **or** forecast is **>= $10**, or when budget `weed-spray-sitl-uat` is in ALARM.
 
+`budget_ok.sh` keeps **`AWS_DEFAULT_REGION=us-west-2`** (EC2 launch/terminate). Call AWS Budgets and billing CloudWatch alarms with explicit **`--region us-east-1`** (AWS Budgets is **us-east-1 only**). Do **not** point the default region at us-east-1 just to read budgets.
+
 ## Human AWS setup (Brian / operator, once)
 
 One-time human setup **before** bots run UAT. Bots do **not** create the AWS account, place Marketplace orders, or raise the spend cap. After this checklist is done, configure the **AWS Grok Bot plugin** so SprayPO / scripts can call AWS for start/teardown UAT (credentials stay in the plugin / IAM — never paste long-lived keys into chat or `/workspace`).
@@ -42,13 +44,13 @@ One-time human setup **before** bots run UAT. Bots do **not** create the AWS acc
 
 ### 2. Region and tags
 
-1. Default region: **`us-west-2`**.
+1. EC2 default region: **`us-west-2`**. Budgets / billing CloudWatch alarms API region: **`us-east-1`** (Budgets is us-east-1 only).
 2. Agree the tag pair on **every** UAT resource: `Project=weed-spray`, `Purpose=sitl-uat`.
 3. Enforce tags on create where possible (org tag policy or launch-template tag specs) so Budgets and `stop_host.sh` can find orphans.
 
 ### 3. Cost Budget
 
-1. Create AWS Budgets **Cost Budget** named **`weed-spray-sitl-uat`**.
+1. Create AWS Budgets **Cost Budget** named **`weed-spray-sitl-uat`** in the Budgets console/API (**us-east-1**).
 2. Period: **monthly**; amount: **$10 USD**.
 3. Filter: resources tagged `Project=weed-spray` **and** `Purpose=sitl-uat`.
 4. Alerts: e.g. actual **80%** and **100%**; forecasted **100%**. Notify Brian (email / SNS already in the account).
@@ -77,7 +79,7 @@ One-time human setup **before** bots run UAT. Bots do **not** create the AWS acc
 ### 6. IAM (least privilege for bots / plugin)
 
 1. Create an IAM principal (user or role) for the **AWS Grok Bot plugin** / `scripts/aws_uat/*.sh`.
-2. Allow only what UAT needs, for example: describe/list budgets; run-instances from launch template `weed-spray-sitl-uat`; terminate instances; delete tagged UAT volumes/EIPs; describe instances/tags in `us-west-2`. Deny broad admin.
+2. Allow only what UAT needs, for example: describe/list budgets and billing CloudWatch alarms in **`us-east-1`**; run-instances from launch template `weed-spray-sitl-uat`; terminate instances; delete tagged UAT volumes/EIPs; describe instances/tags / LT in **`us-west-2`**. Deny broad admin.
 3. Wire that principal into the AWS Grok Bot plugin **after** steps 1–5. Do not paste access keys into chat, issues, or `/workspace`.
 
 ### 7. Done when
@@ -157,7 +159,7 @@ These paths are locked names; **scripts land with Spray Dev** (Refs #10). They a
 
 | Script | Role |
 |---|---|
-| `scripts/aws_uat/budget_ok.sh` | Exit 0 only if month-to-date actual **and** forecast are **< $10** and budget `weed-spray-sitl-uat` is not in ALARM; else exit 1 (hard stop at **>= $10** actual or forecast, or ALARM) |
+| `scripts/aws_uat/budget_ok.sh` | Exit 0 only if month-to-date actual **and** forecast are **< $10** and budget `weed-spray-sitl-uat` is not in ALARM; else exit 1 (hard stop at **>= $10** actual or forecast, or ALARM). Keep **`AWS_DEFAULT_REGION=us-west-2`**; pass **`--region us-east-1`** on Budgets + billing CW alarms only |
 | `scripts/aws_uat/start_host.sh` | Launch **only** from template `weed-spray-sitl-uat` (no resume-stopped default); wait SSH; on virgin LT box: `git clone` bi21an5a1b07-bot/weed-spray → `uv sync --extra dev` (+ npm in `dashboard/` if needed) → `make sitl`; remind host apps. AMI bake = `git`, `mise`/`uv`, `node`/`npm`, host `ffmpeg`, Docker (compose-capable); script does **not** apt-install toolchain each run; **no `git pull`-only path** |
 | `scripts/aws_uat/stop_host.sh` | Compose down; **terminate** instance; **delete** tagged costed UAT resources (EBS/EIP/NAT/etc. if present) so ongoing UAT charges are **zero** by default. Stopped-but-EBS-billing is not the default. Dormant spend only if Brian accepts in writing later (default none). |
 
