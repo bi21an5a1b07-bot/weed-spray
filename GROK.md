@@ -86,6 +86,9 @@ Do not add FastAPI, Ruff, or npm packages to `[tools]` in `mise.toml`. Do not in
 ```bash
 mise trust && mise install && mise run install
 make sitl                 # PX4 SIH + RTSP file loop (Docker)
+make sitl-gz              # opt-in Gazebo gz_x500_lidar_down (issue #19; WSL)
+make sitl-gz-down         # tear down Gazebo compose only
+make down                 # tear down SIH and Gazebo compose
 uv run weed-spray-vision  # :8090
 uv run weed-spray         # :8000
 (cd dashboard && npm run dev)  # :8080
@@ -117,7 +120,8 @@ Ruff config is `[tool.ruff]` in `pyproject.toml`. Do not disable a rule to hide 
 | `bot_files/sitl_template.md` | `GET /run-log` JSON |
 | `bot_files/weeds_class-map.md` | `nc=4`; never renumber 0/1/2 |
 
-Compose images stay exactly: `px4io/px4-sitl` (`PX4_SIM_MODEL=sihsim_quadx`), `bluenviron/mediamtx`, `mwader/static-ffmpeg:7.1` (binary is `/ffmpeg`). `network_mode: host`. One vehicle.
+Default SIH compose images stay exactly: `px4io/px4-sitl` (`PX4_SIM_MODEL=sihsim_quadx`), `bluenviron/mediamtx`, `mwader/static-ffmpeg:7.1` (binary is `/ffmpeg`). `network_mode: host`. One vehicle.
+Opt-in Gazebo profile (`compose.gazebo.yaml` / `make sitl-gz`): `px4io/px4-sitl-gazebo` + `PX4_SIM_MODEL=gz_x500_lidar_down` + MediaMTX. Do not start Gazebo on the shared bot VM. Vehicle camera → `8554/cam` and Offboard lidar-hold are still open on #19 — do not invent PX4 params.
 
 ## SITL vs hardware
 
