@@ -11,7 +11,7 @@ Remote AWS EC2 operator host path (SprayPO start/stop, $10/mo cap): [acceptance-
 | Path | How | Accept bar today |
 |---|---|---|
 | **SIH (default)** | `make sitl` (`compose.yaml`) | Exit `1`; step 7 missing / fail — honest SIH bar |
-| **Gazebo (opt-in)** | `make sitl-gz` (`compose.gazebo.yaml`, `-p weed-spray-gz`) | Vehicle cam now on `rtsp://127.0.0.1:8554/cam` (RTP `:5600` ingest → `cam-bridge`). Full-green **not yet** — Offboard lidar-hold still open on [#19](https://github.com/bi21an5a1b07-bot/weed-spray/issues/19). Do **not** claim exit `0` |
+| **Gazebo (opt-in)** | `make sitl-gz` (`compose.gazebo.yaml`, `-p weed-spray-gz`) | Vehicle cam now on `rtsp://127.0.0.1:8554/cam` (GstCameraSystem RTP `:5600` → MediaMTX `udp+rtp` + `rtpSDP` in `sitl/mediamtx-gazebo.yml`). Full-green **not yet** — Offboard lidar-hold still open on [#19](https://github.com/bi21an5a1b07-bot/weed-spray/issues/19). Do **not** claim exit `0` |
 
 Default `make sitl` is unchanged. Do not start Gazebo on the shared bot VM. Details: [sitl.md](sitl.md).
 

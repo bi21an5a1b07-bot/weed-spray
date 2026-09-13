@@ -49,7 +49,7 @@ Run from the repo root. `.PHONY` targets:
 | `make fmt` | `uv run ruff format src tests` |
 | `make check` | ruff check + format `--check` + pytest |
 
-`make sitl` builds smoke if missing, then tears Gazebo (`sitl-gz-down`), then starts PX4 SIH + MediaMTX + the ffmpeg publisher (`-p weed-spray-sih`). `make sitl-gz` tears SIH (`sitl-down`), then starts opt-in Gazebo + MediaMTX + `cam-bridge` (`-p weed-spray-gz`; no smoke.mp4). Compose `name:` / `-p` isolate the stacks so one profile’s `down` cannot tear the other. Both are host-network — do not run together. Backend, vision, and dashboard stay on the host. See [sitl.md](sitl.md).
+`make sitl` builds smoke if missing, then tears Gazebo (`sitl-gz-down`), then starts PX4 SIH + MediaMTX + the ffmpeg publisher (`-p weed-spray-sih`). `make sitl-gz` tears SIH (`sitl-down`), then starts opt-in Gazebo + MediaMTX (`sitl/mediamtx-gazebo.yml`: `udp+rtp` + H264 PT 96 `rtpSDP`; `-p weed-spray-gz`; no `cam-bridge`, no smoke.mp4). Compose `name:` / `-p` isolate the stacks so one profile’s `down` cannot tear the other. Both are host-network — do not run together. Backend, vision, and dashboard stay on the host. See [sitl.md](sitl.md).
 
 ## Dashboard npm scripts
 
