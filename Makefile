@@ -1,7 +1,7 @@
 # Host-side shortcuts. `make sitl` starts Docker only (PX4 SIH + RTSP).
 # Backend / vision / dashboard stay on the host. See docs/cli.md.
 # Python gate: `make check` (ruff + pytest). See docs/testing.md.
-.PHONY: sitl sitl-down smoke-video inbox-frames promote-inbox app vision backend dashboard accept down test lint fmt check
+.PHONY: sitl sitl-down sitl-gz sitl-gz-down smoke-video inbox-frames promote-inbox app vision backend dashboard accept down test lint fmt check
 
 smoke-video: media/smoke.mp4
 
@@ -15,6 +15,13 @@ sitl: smoke-video
 sitl-down:
 	docker compose down
 
+# Opt-in Gazebo accurate profile (issue #19). Does not replace make sitl.
+sitl-gz:
+	docker compose -f compose.gazebo.yaml up -d
+
+sitl-gz-down:
+	docker compose -f compose.gazebo.yaml down
+
 backend:
 	uv run weed-spray
 
@@ -27,7 +34,7 @@ dashboard:
 accept:
 	uv run weed-spray-accept --out var/last-run.md
 
-down: sitl-down
+down: sitl-down sitl-gz-down
 
 inbox-frames:
 	uv run python scripts/extract_clip_inbox.py
