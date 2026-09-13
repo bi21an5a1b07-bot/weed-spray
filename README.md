@@ -46,7 +46,7 @@ This software does not arm or pulse a real aircraft.
 - Host `ffmpeg` (apt) for `make smoke-video`
 - Optional NVIDIA GPU for YOLO training (`uv sync --extra yolo`)
 
-mise pins **Python 3.11**, **uv**, and **Node 26**. Python packages live in `pyproject.toml` (`uv sync`). Dashboard packages live in `dashboard/` (`npm install`). Docker is a host daemon, not a mise tool.
+mise pins **Python 3.11**, **uv**, **Node 26**, and **github-cli 2**. Python packages live in `pyproject.toml` (`uv sync`). Dashboard packages live in `dashboard/` (`npm install`). Docker is a host daemon, not a mise tool.
 
 ## Quick start
 
