@@ -29,3 +29,4 @@ weeds/inbox/**
 !weeds/dataset/labels/val/.gitkeep
 *.pt
 runs/
+scripts/aws_uat/.state/
