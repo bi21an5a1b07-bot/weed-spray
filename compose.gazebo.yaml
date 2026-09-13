@@ -1,14 +1,15 @@
 # weed-spray accurate SITL — Gazebo Harmonic + MediaMTX (opt-in).
 # Default light path remains compose.yaml (SIH + file RTSP). See issue #19.
-# Contract: bot_files/sitl_loop.md (gz bar); docs/acceptance.md SIH bar unchanged.
 #
-# Pin: px4io/px4-sitl-gazebo from https://docs.px4.io/main/en/simulation/px4_sitl_prebuilt_packages
-# Model: gz_x500_lidar_down (PX4_SYS_AUTOSTART 4016) — downward 1D lidar only.
-# Camera → rtsp://127.0.0.1:8554/cam is NOT wired yet (lidar_down has no stock cam;
-#  overlay / bridge is a follow-up on #19). Do not use smoke.mp4 on this profile.
+# Project name isolates this stack from SIH (shared host network / service labels).
+name: weed-spray-gz
 #
-# WSL: network_mode host + host.docker.internal → 127.0.0.1 (same as SIH).
-# HEADLESS=1 — no Gazebo GUI. One vehicle. Do not docker pull extras beyond this file.
+# Pin: px4io/px4-sitl-gazebo — https://docs.px4.io/main/en/simulation/px4_sitl_prebuilt_packages
+# Model: gz_x500_lidar_down (4016) with repo overlay adding downward mono_cam.
+# Camera: GstCameraSystem UDP RTP :5600 (H264 PT 96) → MediaMTX udp+rtp + rtpSDP
+#   → rtsp://127.0.0.1:8554/cam (one GCS URL). No smoke.mp4. No bare ffmpeg rtp://.
+# WSL: network_mode host + host.docker.internal → 127.0.0.1. HEADLESS=1.
+# Do not docker pull extras beyond this file.
 
 services:
   px4:
@@ -18,7 +19,8 @@ services:
     environment:
       PX4_SIM_MODEL: gz_x500_lidar_down
       HEADLESS: "1"
-      # Keep realtime; do not set PX4_SIM_SPEED_FACTOR.
+    volumes:
+      - ./sitl/gz/models/x500_lidar_down:/opt/px4-gazebo/share/gz/models/x500_lidar_down:ro
     extra_hosts:
       - "host.docker.internal:127.0.0.1"
     stdin_open: true
@@ -30,6 +32,6 @@ services:
     container_name: weed-spray-mediamtx-gz
     network_mode: host
     volumes:
-      - ./sitl/mediamtx.yml:/mediamtx.yml:ro
+      - ./sitl/mediamtx-gazebo.yml:/mediamtx.yml:ro
     command: ["/mediamtx.yml"]
     restart: unless-stopped

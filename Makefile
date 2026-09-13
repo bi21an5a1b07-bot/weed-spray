@@ -12,18 +12,18 @@ media/smoke.mp4:
 
 sitl: smoke-video
 	$(MAKE) sitl-gz-down
-	docker compose up -d
+	docker compose -p weed-spray-sih -f compose.yaml up -d
 
 sitl-down:
-	docker compose down
+	docker compose -p weed-spray-sih -f compose.yaml down
 
 # Opt-in Gazebo accurate profile (issue #19). Does not replace make sitl.
 sitl-gz:
 	$(MAKE) sitl-down
-	docker compose -f compose.gazebo.yaml up -d
+	docker compose -p weed-spray-gz -f compose.gazebo.yaml up -d
 
 sitl-gz-down:
-	docker compose -f compose.gazebo.yaml down
+	docker compose -p weed-spray-gz -f compose.gazebo.yaml down
 
 backend:
 	uv run weed-spray
