@@ -4,7 +4,7 @@ Remote full live SITL UAT on an **AWS EC2 operator host** so SprayPO need not us
 
 Normative grader: `weed_spray.harness.accept` (`make accept` / `uv run weed-spray-accept`). FakeVehicle-only bot-vm gate: [testing.md](testing.md) (`make check`).
 
-Host/automation scripts named below land in a **Spray Dev follow-up PR** (Refs #10). Brian owns the AWS account, budget, and launch template. This doc is the docs slice only.
+Host/automation scripts `scripts/aws_uat/{budget_ok,start_host,stop_host}.sh` are **on `master`** (PR #13, `80b2f30`). Brian owns the AWS account, budget, and launch template.
 
 ## Honest scope
 
@@ -153,9 +153,9 @@ Do not treat GPS / `vehicle_local_position.z` as AGL. Do not invent rangefinder 
 5. **Teardown all costed UAT** — `scripts/aws_uat/stop_host.sh` (compose down; **terminate** instance; **delete** tagged EBS/EIP/NAT/etc. if present). Outcome: **zero ongoing UAT charges** by default. Do not leave any costed UAT resource billing idle.
 6. **On failure** — SprayPO opens detailed GitHub issues. SprayPO does **not** merge or implement fixes.
 
-### Scripts (Spray Dev follow-up)
+### Scripts (on master)
 
-These paths are locked names; **scripts land with Spray Dev** (Refs #10). They are **not** on `master` yet:
+These paths are on **`master`** (PR #13 / `80b2f30`):
 
 | Script | Role |
 |---|---|
