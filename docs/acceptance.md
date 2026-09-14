@@ -11,7 +11,7 @@ Remote AWS EC2 operator host path (SprayPO start/stop, $10/mo cap): [acceptance-
 | Path | How | Accept bar today |
 |---|---|---|
 | **SIH (default)** | `make sitl` (`compose.yaml`) | Exit `1`; step 7 missing / fail — honest SIH bar |
-| **Gazebo (opt-in)** | `make sitl-gz` (`compose.gazebo.yaml`) | Full-green **not yet** — vehicle cam → `8554/cam` and Offboard lidar-hold still open on [#19](https://github.com/bi21an5a1b07-bot/weed-spray/issues/19). Do **not** claim exit `0` |
+| **Gazebo (opt-in)** | `make sitl-gz` (`compose.gazebo.yaml`, `-p weed-spray-gz`) | Vehicle cam now on `rtsp://127.0.0.1:8554/cam` (GstCameraSystem RTP `:5600` → MediaMTX `udp+rtp` + `rtpSDP` in `sitl/mediamtx-gazebo.yml`). Full-green **not yet** — Offboard lidar-hold still open on [#19](https://github.com/bi21an5a1b07-bot/weed-spray/issues/19). Do **not** claim exit `0` |
 
 Default `make sitl` is unchanged. Do not start Gazebo on the shared bot VM. Details: [sitl.md](sitl.md).
 
@@ -109,7 +109,7 @@ Default PX4 SIH still expects an honest fail on hover AGL. SIH may publish a bog
 
 Do not treat GPS / `vehicle_local_position.z` as AGL. Do not invent rangefinder PX4 params to fake a green table. "Good enough for SIH" = processes up + steps 1–6 and 10 behaving as above + honest step 7 fail — **not** `make accept` exit `0`.
 
-Exit `0` only with a real rangefinder in the 0.15–0.30 m band (hardware, or a future Gazebo path once vehicle cam + Offboard lidar-hold land on #19). Opt-in `make sitl-gz` first slice does **not** deliver that yet. Default compose remains SIH.
+Exit `0` only with a real rangefinder in the 0.15–0.30 m band (hardware, or Gazebo once Offboard lidar-hold lands on #19). Opt-in `make sitl-gz` now has vehicle cam on `8554/cam` but still does **not** deliver full-green / exit `0`. Default compose remains SIH.
 
 ## After the run
 
