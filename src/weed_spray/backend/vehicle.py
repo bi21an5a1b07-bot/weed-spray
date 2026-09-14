@@ -174,13 +174,22 @@ class Vehicle:
             self._telem.heading_deg = att.heading_deg
 
     async def _track_distance(self) -> None:
-        """Subscribe to DISTANCE_SENSOR. SIH has no lidar; relative-alt mirrors → missing."""
+        """Subscribe to DISTANCE_SENSOR. SIH has no lidar; relative-alt mirrors → missing.
+
+        Marks ``distance_sensor_stream_alive`` on any positive finite raw sample
+        (scan-height ~2 m still counts). ``distance_sensor_m`` stays the short-range
+        trust bar only (#12).
+        """
         try:
             async for dist in self.drone.telemetry.distance_sensor():
-                parsed = distance_reading_m(
-                    getattr(dist, "current_distance_m", None),
-                    self._telem.relative_alt_m,
-                )
+                raw = getattr(dist, "current_distance_m", None)
+                try:
+                    raw_f = float(raw) if raw is not None else None
+                except (TypeError, ValueError):
+                    raw_f = None
+                if raw_f is not None and not math.isnan(raw_f) and raw_f > 0:
+                    self._telem.distance_sensor_stream_alive = True
+                parsed = distance_reading_m(raw, self._telem.relative_alt_m)
                 if parsed is None:
                     self._telem.distance_sensor_missing = True
                     self._telem.distance_sensor_m = None
@@ -190,6 +199,7 @@ class Vehicle:
         except Exception as exc:  # noqa: BLE001  SIH has no lidar
             log.info("distance_sensor unavailable: %s", exc)
             self._telem.distance_sensor_missing = True
+            self._telem.distance_sensor_stream_alive = False
 
     async def upload_fence(self, box: FenceBox) -> None:
         """Upload a PX4 inclusion polygon from the typed NED box."""

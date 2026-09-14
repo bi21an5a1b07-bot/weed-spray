@@ -20,6 +20,7 @@ class FakeVehicle:
         self.fence: FenceBox | None = None
         self.gotos: list[tuple[float, float, float]] = []
         self.goto_agls: list[tuple[float, float, float]] = []
+        self.agl_after_descend_m: float = 0.22
         self.pulses = 0
         self.armed_takeoff = 0
         self.waited_in_air = 0
@@ -73,8 +74,15 @@ class FakeVehicle:
     async def goto_global_agl(
         self, lat_deg: float, lon_deg: float, agl_m: float, settle_s: float = 0.0
     ) -> None:
-        """Append AGL hover without sleeping ``settle_s``."""
+        """Append AGL hover; simulate descend into ``agl_after_descend_m``."""
         self.goto_agls.append((lat_deg, lon_deg, agl_m))
+        reading = self.agl_after_descend_m
+        if reading is None:
+            self._telem.distance_sensor_missing = True
+            self._telem.distance_sensor_m = None
+        else:
+            self._telem.distance_sensor_missing = False
+            self._telem.distance_sensor_m = reading
 
     async def pulse_pump(self, duration_s: float) -> None:
         """Count a pulse; leave pump at 0."""

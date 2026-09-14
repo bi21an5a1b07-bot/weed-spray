@@ -92,7 +92,7 @@ One plant. JSON field is `"class"` (alias of `class_name`). Fields: `id`, `class
 
 ### `class Telemetry`
 
-Last MAVSDK snapshot: `connected`, `armed`, `in_air`, `lat`, `lon`, `relative_alt_m`, `heading_deg`, `distance_sensor_m`, `distance_sensor_missing` (true when no usable short-range reading — typical on SIH, including dropped **≥ 1 m** bogus streams), `pump_value`, `flight_mode`, `rc_available`.
+Last MAVSDK snapshot: `connected`, `armed`, `in_air`, `lat`, `lon`, `relative_alt_m`, `heading_deg`, `distance_sensor_m`, `distance_sensor_missing` (true when no usable short-range reading — typical on SIH, including dropped **≥ 1 m** bogus streams), `distance_sensor_stream_alive` (positive finite raw DISTANCE_SENSOR seen), `pump_value`, `flight_mode`, `rc_available`.
 
 ### `class AppState`
 
@@ -160,7 +160,7 @@ If `on_failsafe` is set, await it. `kind` is a `PumpOffEvent.type`.
 | `_track_armed` | `armed` | `telemetry.armed` |
 | `_track_in_air` | `in_air` | used for RC-first takeoff |
 | `_track_heading` | `heading` | `heading_deg` |
-| `_track_distance` | `distance_sensor` | `distance_reading_m`; `None`/exception → `distance_sensor_missing` |
+| `_track_distance` | `distance_sensor` | raw > 0 → `distance_sensor_stream_alive`; `distance_reading_m`; `None`/exception → `distance_sensor_missing` |
 
 #### `async Vehicle.upload_fence(box)`
 
@@ -184,7 +184,7 @@ Offboard position. `down` is NED z (positive down). Sleeps `settle_s` (FakeVehic
 
 #### `async Vehicle.goto_global_agl(lat_deg, lon_deg, agl_m, settle_s=2.0)`
 
-Offboard global AGL via MAVSDK `PositionGlobalYaw.AltitudeType.AGL` (PX4 `MAV_FRAME_GLOBAL_TERRAIN_ALT_INT`). Sleeps `settle_s` (FakeVehicle records `(lat, lon, agl_m)` and does not sleep). Mission refuses this path without usable `DISTANCE_SENSOR`.
+Offboard global AGL via MAVSDK `PositionGlobalYaw.AltitudeType.AGL` (PX4 `MAV_FRAME_GLOBAL_TERRAIN_ALT_INT`). Sleeps `settle_s` (FakeVehicle records `(lat, lon, agl_m)` and does not sleep). Mission requires DISTANCE_SENSOR stream alive pre-goto; trusted in-band AGL after descend before pulse.
 
 
 #### `async Vehicle.set_pump(value)`
