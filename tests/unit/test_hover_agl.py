@@ -168,3 +168,58 @@ async def test_offboard_agl_refuses_when_only_hover_sih_mirror(monkeypatch):
         await m._visit_confirmed()
     assert v.goto_agls == []
     assert v.pulses == 0
+
+
+def test_none_relative_alt_does_not_unlock_stream_alive():
+    telem = Telemetry()
+    apply_distance_sample(telem, 2.0, relative_alt_m=None)
+    assert telem.distance_sensor_stream_alive is False
+
+
+def test_lagging_relative_alt_does_not_unlock_stream_alive():
+    """ds=2 while rel still at hover (~0.22) must not sticky-unlock."""
+    telem = Telemetry()
+    apply_distance_sample(telem, 2.0, relative_alt_m=0.22)
+    assert telem.distance_sensor_stream_alive is False
+
+
+def test_mirror_clears_sticky_stream_alive():
+    telem = Telemetry()
+    apply_distance_sample(telem, 2.0, relative_alt_m=2.8)  # non-mirror scan
+    assert telem.distance_sensor_stream_alive is True
+    apply_distance_sample(telem, 0.22, relative_alt_m=0.22)  # hover mirror
+    assert telem.distance_sensor_stream_alive is False
+
+
+@pytest.mark.asyncio
+async def test_offboard_agl_latches_stream_before_hover_mirrors(monkeypatch):
+    """Latch scan-height stream_ok before NED hover clears telem.stream_alive."""
+    monkeypatch.setattr(
+        "weed_spray.backend.mission.settings",
+        Settings(
+            hover_altitude_mode="offboard_agl",
+            hover_agl_m=0.22,
+            hover_min_m=0.15,
+            hover_max_m=0.30,
+            scan_agl_m=2.0,
+        ),
+    )
+    v = FakeVehicle()
+    v.connected = True
+    v._telem.lat = 40.01
+    v._telem.lon = -105.01
+    v._telem.distance_sensor_stream_alive = True
+    v.agl_after_descend_m = 0.22
+
+    async def descend_and_clear(north, east, down, settle_s=0.0):
+        v.gotos.append((north, east, down))
+        if abs(down) <= 1.0:
+            v._apply_descend_reading()
+            # SIH/flat hover mirror would clear sticky telem flag
+            v._telem.distance_sensor_stream_alive = False
+
+    v.goto_ned = descend_and_clear  # type: ignore[method-assign]
+    m = _mission(v)
+    await m._visit_confirmed()
+    assert v.goto_agls[-1] == (40.01, -105.01, 0.22)
+    assert v.pulses == 1

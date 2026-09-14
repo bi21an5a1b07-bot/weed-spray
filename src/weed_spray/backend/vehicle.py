@@ -90,22 +90,19 @@ def apply_distance_sample(
     relative_alt_m: float | None = None,
     *,
     stream_max_m: float = 5.0,
+    stream_min_m: float = 1.0,
 ) -> None:
     """Update ``telem`` from one DISTANCE_SENSOR sample.
 
-    ``distance_sensor_stream_alive`` flips only for non-mirror samples at or
-    below ``stream_max_m`` (scan-height lidar ok; SIH mirrors and absurd highs
-    do not). ``distance_sensor_m`` stays the short-range trust bar (#12).
+    Short-range trust (``distance_sensor_m``) is unchanged (#12).
+
+    ``distance_sensor_stream_alive`` is for Offboard TERRAIN_ALT unlock only:
+    - fail closed when ``relative_alt_m`` is None (cannot validate mirrors)
+    - clear on any SIH relative-alt mirror (including hover-height ~0.22 m)
+    - set only for contemporaneous scan-height samples (both ds and relative_alt
+      in ``[stream_min_m, stream_max_m]``) that are not mirrors — blocks lag
+      unlocks where relative_alt is still near hover while ds reads ~scan
     """
-    value = _parse_distance_m(current)
-    # Stream-alive: reject SIH mirrors at ANY altitude (mirror_min_m=0), including
-    # hover-height ~0.22 m locks. Short-range trust below still keeps low readings.
-    if (
-        value is not None
-        and value <= stream_max_m
-        and not is_relative_alt_mirror(value, relative_alt_m, mirror_min_m=0.0)
-    ):
-        telem.distance_sensor_stream_alive = True
     parsed = distance_reading_m(current, relative_alt_m)
     if parsed is None:
         telem.distance_sensor_missing = True
@@ -113,6 +110,23 @@ def apply_distance_sample(
     else:
         telem.distance_sensor_missing = False
         telem.distance_sensor_m = parsed
+
+    value = _parse_distance_m(current)
+    if value is None:
+        return
+    if relative_alt_m is None:
+        return
+    try:
+        rel = float(relative_alt_m)
+    except (TypeError, ValueError):
+        return
+    if math.isnan(rel):
+        return
+    if is_relative_alt_mirror(value, rel, mirror_min_m=0.0):
+        telem.distance_sensor_stream_alive = False
+        return
+    if stream_min_m <= value <= stream_max_m and stream_min_m <= rel <= stream_max_m:
+        telem.distance_sensor_stream_alive = True
 
 
 class Vehicle:

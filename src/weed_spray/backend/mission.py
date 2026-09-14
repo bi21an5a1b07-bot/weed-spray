@@ -227,6 +227,8 @@ class Mission:
                 telem = self.vehicle.telemetry
                 if telem.lat is None or telem.lon is None:
                     raise RuntimeError("offboard_agl hover needs lat/lon telemetry")
+                # Latch scan-height stream before NED hover (mirrors may clear telem).
+                stream_ok = telem.distance_sensor_stream_alive
                 # NED approach first — never command TERRAIN_ALT until trusted lidar.
                 await self.vehicle.goto_ned(det.north_m, det.east_m, down_hover, settle_s=3.0)
                 telem = self.vehicle.telemetry
@@ -236,10 +238,10 @@ class Mission:
                     raise RuntimeError(
                         f"offboard_agl refused: hover AGL out of band ({telem.distance_sensor_m} m)"
                     )
-                if not telem.distance_sensor_stream_alive:
+                if not stream_ok:
                     raise RuntimeError(
                         "offboard_agl refused: DISTANCE_SENSOR stream not alive "
-                        "(need a non-SIH-mirror sample before TERRAIN_ALT)"
+                        "(need a non-SIH-mirror scan-height sample before TERRAIN_ALT)"
                     )
                 await self.vehicle.goto_global_agl(
                     telem.lat, telem.lon, settings.hover_agl_m, settle_s=3.0
