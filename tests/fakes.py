@@ -19,6 +19,8 @@ class FakeVehicle:
         self.on_failsafe = None
         self.fence: FenceBox | None = None
         self.gotos: list[tuple[float, float, float]] = []
+        self.goto_agls: list[tuple[float, float, float]] = []
+        self.agl_after_descend_m: float | None = None  # SIH-like; set for lidar tests
         self.pulses = 0
         self.armed_takeoff = 0
         self.waited_in_air = 0
@@ -66,8 +68,26 @@ class FakeVehicle:
         self.gotos.append((north, east, down))
 
     async def goto_ned(self, north: float, east: float, down: float, settle_s: float = 0.0) -> None:
-        """Append NED without sleeping ``settle_s``."""
+        """Append NED; simulate lidar after near-ground descend (``|down|`` ≤ 1 m)."""
         self.gotos.append((north, east, down))
+        if abs(down) <= 1.0:
+            self._apply_descend_reading()
+
+    async def goto_global_agl(
+        self, lat_deg: float, lon_deg: float, agl_m: float, settle_s: float = 0.0
+    ) -> None:
+        """Append AGL hold without sleeping (reading already set by NED approach)."""
+        self.goto_agls.append((lat_deg, lon_deg, agl_m))
+
+    def _apply_descend_reading(self) -> None:
+        """Apply ``agl_after_descend_m`` after a near-ground NED setpoint."""
+        reading = self.agl_after_descend_m
+        if reading is None:
+            self._telem.distance_sensor_missing = True
+            self._telem.distance_sensor_m = None
+        else:
+            self._telem.distance_sensor_missing = False
+            self._telem.distance_sensor_m = reading
 
     async def pulse_pump(self, duration_s: float) -> None:
         """Count a pulse; leave pump at 0."""

@@ -147,7 +147,12 @@ class PhaseEvent(BaseModel):
 
 
 class Telemetry(BaseModel):
-    """Last MAVSDK snapshot. ``distance_sensor_missing`` is true on SIH."""
+    """Last MAVSDK snapshot. ``distance_sensor_missing`` is true on SIH.
+
+    ``distance_sensor_stream_alive`` means a positive finite DISTANCE_SENSOR
+    sample arrived (even if filtered out of the short-range trust bar).
+    ``distance_sensor_m`` is only the trusted spray-hover reading (<1 m).
+    """
 
     connected: bool = False
     armed: bool = False
@@ -158,6 +163,7 @@ class Telemetry(BaseModel):
     heading_deg: float | None = None
     distance_sensor_m: float | None = None
     distance_sensor_missing: bool = True
+    distance_sensor_stream_alive: bool = False
     pump_value: float = 0.0
     flight_mode: str | None = None
     rc_available: bool | None = None

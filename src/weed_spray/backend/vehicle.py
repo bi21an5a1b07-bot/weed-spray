@@ -10,7 +10,7 @@ from collections.abc import Awaitable, Callable
 from mavsdk import System
 from mavsdk.action import ActionError
 from mavsdk.geofence import FenceType, GeofenceData, Point, Polygon
-from mavsdk.offboard import OffboardError, PositionNedYaw
+from mavsdk.offboard import OffboardError, PositionGlobalYaw, PositionNedYaw
 from mavsdk.telemetry import FlightMode
 
 from .config import settings
@@ -22,25 +22,8 @@ FailsafeHandler = Callable[[str], Awaitable[None]]
 log = logging.getLogger("weed_spray.vehicle")
 
 
-def distance_reading_m(
-    current: object,
-    relative_alt_m: float | None = None,
-    *,
-    mirror_eps_m: float = 0.5,
-    mirror_min_m: float = 1.0,
-    max_trust_m: float = 1.0,
-) -> float | None:
-    """Parse lidar metres. NaN / non-positive / missing → None.
-
-    This project only trusts short-range downward lidar for spray hover
-    (about 0.15-0.30 m). Readings at or above ``max_trust_m`` (default 1 m)
-    are treated as missing so SIH bogus streams (often ~relative alt, or a
-    high value while commanded low) cannot pretend to be AGL (issue #12).
-
-    Also drop when ``relative_alt_m`` is within ``mirror_eps_m`` of a reading
-    at least ``mirror_min_m`` (SIH relative-alt mirror). Low hover stays kept
-    even if it matches relative_alt (real lidar can look like that).
-    """
+def _parse_distance_m(current: object) -> float | None:
+    """Float metres or None for NaN / non-positive / junk."""
     if current is None:
         return None
     try:
@@ -49,16 +32,95 @@ def distance_reading_m(
         return None
     if math.isnan(value) or value <= 0:
         return None
+    return value
+
+
+def is_relative_alt_mirror(
+    value_m: float,
+    relative_alt_m: float | None,
+    *,
+    mirror_eps_m: float = 0.5,
+    mirror_min_m: float = 1.0,
+) -> bool:
+    """True when a reading looks like SIH mirroring ``relative_alt_m`` (issue #12)."""
+    if relative_alt_m is None or value_m < mirror_min_m:
+        return False
+    try:
+        rel = float(relative_alt_m)
+    except (TypeError, ValueError):
+        return False
+    if math.isnan(rel):
+        return False
+    return abs(value_m - rel) <= mirror_eps_m
+
+
+def distance_reading_m(
+    current: object,
+    relative_alt_m: float | None = None,
+    *,
+    mirror_eps_m: float = 0.5,
+    mirror_min_m: float = 1.0,
+    max_trust_m: float = 1.0,
+) -> float | None:
+    """Parse trusted short-range lidar metres. NaN / non-positive / missing → None.
+
+    This project only trusts short-range downward lidar for spray hover
+    (about 0.15-0.30 m). Readings at or above ``max_trust_m`` (default 1 m)
+    are treated as missing so SIH bogus streams (often ~relative alt, or a
+    high value while commanded low) cannot pretend to be AGL (issue #12).
+
+    Also drop SIH relative-alt mirrors (see ``is_relative_alt_mirror``). Low
+    hover stays kept even if it matches relative_alt (real lidar can).
+    """
+    value = _parse_distance_m(current)
+    if value is None:
+        return None
     if value >= max_trust_m:
         return None
-    if relative_alt_m is not None:
-        try:
-            rel = float(relative_alt_m)
-        except (TypeError, ValueError):
-            rel = float("nan")
-        if not math.isnan(rel) and value >= mirror_min_m and abs(value - rel) <= mirror_eps_m:
-            return None
+    if is_relative_alt_mirror(
+        value, relative_alt_m, mirror_eps_m=mirror_eps_m, mirror_min_m=mirror_min_m
+    ):
+        return None
     return value
+
+
+def apply_distance_sample(
+    telem: Telemetry,
+    current: object,
+    relative_alt_m: float | None = None,
+    *,
+    stream_max_m: float = 5.0,
+    stream_min_m: float = 1.0,
+) -> None:
+    """Update ``telem`` from one DISTANCE_SENSOR sample.
+
+    Short-range trust (``distance_sensor_m``) is unchanged (#12).
+
+    ``distance_sensor_stream_alive`` marks a contemporaneous scan-height sample
+    (ds and relative_alt both in ``[stream_min_m, stream_max_m]``). Fail closed
+    when ``relative_alt_m`` is None or still near hover while ds reads scan
+    (lag unlock). Does **not** treat ds≈relative_alt as SIH-only — flat Gazebo
+    belly lidar agrees with relative_alt too. SIH refuse is ``WEED_LIDAR_EXPECTED``.
+    """
+    parsed = distance_reading_m(current, relative_alt_m)
+    if parsed is None:
+        telem.distance_sensor_missing = True
+        telem.distance_sensor_m = None
+    else:
+        telem.distance_sensor_missing = False
+        telem.distance_sensor_m = parsed
+
+    value = _parse_distance_m(current)
+    if value is None or relative_alt_m is None:
+        return
+    try:
+        rel = float(relative_alt_m)
+    except (TypeError, ValueError):
+        return
+    if math.isnan(rel):
+        return
+    if stream_min_m <= value <= stream_max_m and stream_min_m <= rel <= stream_max_m:
+        telem.distance_sensor_stream_alive = True
 
 
 class Vehicle:
@@ -174,22 +236,18 @@ class Vehicle:
             self._telem.heading_deg = att.heading_deg
 
     async def _track_distance(self) -> None:
-        """Subscribe to DISTANCE_SENSOR. SIH has no lidar; relative-alt mirrors → missing."""
+        """Subscribe to DISTANCE_SENSOR; SIH mirrors never mark stream alive."""
         try:
             async for dist in self.drone.telemetry.distance_sensor():
-                parsed = distance_reading_m(
+                apply_distance_sample(
+                    self._telem,
                     getattr(dist, "current_distance_m", None),
                     self._telem.relative_alt_m,
                 )
-                if parsed is None:
-                    self._telem.distance_sensor_missing = True
-                    self._telem.distance_sensor_m = None
-                else:
-                    self._telem.distance_sensor_missing = False
-                    self._telem.distance_sensor_m = parsed
         except Exception as exc:  # noqa: BLE001  SIH has no lidar
             log.info("distance_sensor unavailable: %s", exc)
             self._telem.distance_sensor_missing = True
+            self._telem.distance_sensor_stream_alive = False
 
     async def upload_fence(self, box: FenceBox) -> None:
         """Upload a PX4 inclusion polygon from the typed NED box."""
@@ -236,6 +294,25 @@ class Vehicle:
     async def goto_ned(self, north: float, east: float, down: float, settle_s: float = 2.0) -> None:
         """Command Offboard position. ``down`` is NED z (positive down). Sleeps ``settle_s``."""
         await self.drone.offboard.set_position_ned(PositionNedYaw(north, east, down, 0.0))
+        await asyncio.sleep(settle_s)
+
+    async def goto_global_agl(
+        self, lat_deg: float, lon_deg: float, agl_m: float, settle_s: float = 2.0
+    ) -> None:
+        """Offboard global AGL hover via MAVSDK ``AltitudeType.AGL``.
+
+        Maps to PX4 ``MAV_FRAME_GLOBAL_TERRAIN_ALT_INT`` (docs.px4.io Offboard).
+        No PX4 params are written here — terrain/rangefinder fusion must already
+        be live on the airframe (Gazebo ``gz_x500_lidar_down`` candidate).
+        """
+        sp = PositionGlobalYaw(
+            lat_deg,
+            lon_deg,
+            agl_m,
+            0.0,
+            PositionGlobalYaw.AltitudeType.AGL,
+        )
+        await self.drone.offboard.set_position_global(sp)
         await asyncio.sleep(settle_s)
 
     async def pulse_pump(self, duration_s: float) -> None:

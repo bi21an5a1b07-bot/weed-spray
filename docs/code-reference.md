@@ -28,7 +28,9 @@ Pydantic settings. `env_prefix="WEED_"`, unknown env keys ignored. Does **not** 
 | `vision_url` | `http://127.0.0.1:8090` | Injector base URL |
 | `http_host` / `http_port` | `127.0.0.1` / `8000` | Backend bind |
 | `scan_agl_m` | `2.0` | Lawnmower altitude (metres) |
-| `hover_agl_m` | `0.22` | Commanded spray hover; NED down = `−this` |
+| `hover_agl_m` | `0.22` | Commanded spray hover; NED down = `−this` when mode is `ned` |
+| `hover_altitude_mode` | `ned` | `ned` (SIH) or `offboard_agl` (MAVSDK AGL / PX4 terrain-alt Offboard) |
+| `lidar_expected` | `false` | Required `true` with `offboard_agl` (Gazebo); SIH stays false |
 | `hover_min_m` / `hover_max_m` | `0.15` / `0.30` | Accept band for **measured** AGL |
 | `pump_index` | `1` | MAVSDK 1-based actuator index (Actuator Set 1) |
 | `pump_on` / `pump_off` | `1.0` / `0.0` | Scale `[-1, 1]`; OFF `0` is proposed |
@@ -91,7 +93,7 @@ One plant. JSON field is `"class"` (alias of `class_name`). Fields: `id`, `class
 
 ### `class Telemetry`
 
-Last MAVSDK snapshot: `connected`, `armed`, `in_air`, `lat`, `lon`, `relative_alt_m`, `heading_deg`, `distance_sensor_m`, `distance_sensor_missing` (true when no usable short-range reading — typical on SIH, including dropped **≥ 1 m** bogus streams), `pump_value`, `flight_mode`, `rc_available`.
+Last MAVSDK snapshot: `connected`, `armed`, `in_air`, `lat`, `lon`, `relative_alt_m`, `heading_deg`, `distance_sensor_m`, `distance_sensor_missing` (true when no usable short-range reading — typical on SIH, including dropped **≥ 1 m** bogus streams), `distance_sensor_stream_alive` (positive finite raw DISTANCE_SENSOR seen), `pump_value`, `flight_mode`, `rc_available`.
 
 ### `class AppState`
 
@@ -159,7 +161,7 @@ If `on_failsafe` is set, await it. `kind` is a `PumpOffEvent.type`.
 | `_track_armed` | `armed` | `telemetry.armed` |
 | `_track_in_air` | `in_air` | used for RC-first takeoff |
 | `_track_heading` | `heading` | `heading_deg` |
-| `_track_distance` | `distance_sensor` | `distance_reading_m`; `None`/exception → `distance_sensor_missing` |
+| `_track_distance` | `distance_sensor` | `apply_distance_sample` (non-mirror ≤5 m → stream alive; short-range trust → `distance_sensor_m`) |
 
 #### `async Vehicle.upload_fence(box)`
 
@@ -180,6 +182,11 @@ Send one NED setpoint then `offboard.start()`. MAVSDK keeps ≥ 2 Hz. One retry 
 #### `async Vehicle.goto_ned(north, east, down, settle_s=2.0)`
 
 Offboard position. `down` is NED z (positive down). Sleeps `settle_s` (FakeVehicle does not sleep).
+
+#### `async Vehicle.goto_global_agl(lat_deg, lon_deg, agl_m, settle_s=2.0)`
+
+Offboard global AGL via MAVSDK `PositionGlobalYaw.AltitudeType.AGL` (PX4 `MAV_FRAME_GLOBAL_TERRAIN_ALT_INT`). Sleeps `settle_s` (FakeVehicle records `(lat, lon, agl_m)` and does not sleep). Mission requires `WEED_LIDAR_EXPECTED`, latches scan-height stream (flat ds≈rel ok), NED-approaches, in-band, then `goto_global_agl`.
+
 
 #### `async Vehicle.set_pump(value)`
 
@@ -478,7 +485,7 @@ In-process stand-in for MAVSDK `Vehicle`. No PX4, no sleep.
 
 Same async surface as `Vehicle`. Records `gotos`, pulse/takeoff/RTL/kill counts. Home is `40, -105`. `distance_sensor_missing=True`. `drone.action.hold` is `_async_noop`.
 
-Each method mirrors `Vehicle` without UDP: `connect` marks connected; `upload_fence` stores the box; `wait_in_air` / `arm_and_takeoff` set `in_air` immediately; `goto_ned` appends NED and does not sleep; `pulse_pump` increments `pulses` and leaves pump at 0; `kill` counts and pump-offs.
+Each method mirrors `Vehicle` without UDP: `connect` marks connected; `upload_fence` stores the box; `wait_in_air` / `arm_and_takeoff` set `in_air` immediately; `goto_ned` appends NED; `goto_global_agl` appends `(lat, lon, agl_m)`; neither sleeps; `pulse_pump` increments `pulses` and leaves pump at 0; `kill` counts and pump-offs.
 
 ### `async _async_noop(*_a, **_k)`
 

@@ -11,7 +11,9 @@ Prefix `WEED_`. Defined in `weed_spray.backend.config.Settings`.
 | `WEED_HTTP_HOST` | `127.0.0.1` | Backend bind |
 | `WEED_HTTP_PORT` | `8000` | Backend port |
 | `WEED_SCAN_AGL_M` | `2.0` | Lawnmower altitude |
-| `WEED_HOVER_AGL_M` | `0.22` | Commanded spray hover (NED down = −this) |
+| `WEED_HOVER_AGL_M` | `0.22` | Commanded spray hover: under `ned`, NED down = −this; under `offboard_agl`, **positive AGL metres** (not a signed NED) |
+| `WEED_LIDAR_EXPECTED` | `false` | Belly-lidar / Gazebo capability. Required `true` with `offboard_agl`. Default SIH stays false (SIH cannot fake a real lidar) |
+| `WEED_HOVER_ALTITUDE_MODE` | `ned` | `ned` or `offboard_agl` (needs `WEED_LIDAR_EXPECTED`; latch scan-height stream → NED → in-band → AGL). Flat ds≈rel unlocks stream; lag/None-rel do not |
 | `WEED_HOVER_MIN_M` / `MAX` | `0.15` / `0.30` | Accept band for measured AGL |
 | `WEED_PUMP_INDEX` | `1` | MAVSDK actuator index (1-based = Set 1) |
 | `WEED_PUMP_ON` / `OFF` | `1.0` / `0.0` | Scale [-1, 1]; OFF=0 is proposed |
