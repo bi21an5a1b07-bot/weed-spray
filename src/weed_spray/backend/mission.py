@@ -227,6 +227,11 @@ class Mission:
                 telem = self.vehicle.telemetry
                 if telem.lat is None or telem.lon is None:
                     raise RuntimeError("offboard_agl hover needs lat/lon telemetry")
+                if telem.distance_sensor_missing or telem.distance_sensor_m is None:
+                    raise RuntimeError(
+                        "offboard_agl refused: usable DISTANCE_SENSOR required "
+                        "(no terrain/lidar estimate)"
+                    )
                 await self.vehicle.goto_global_agl(
                     telem.lat, telem.lon, settings.hover_agl_m, settle_s=3.0
                 )

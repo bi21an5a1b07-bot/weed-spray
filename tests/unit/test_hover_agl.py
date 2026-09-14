@@ -57,3 +57,49 @@ async def test_visit_default_ned_does_not_call_agl(monkeypatch):
     await m._visit_confirmed()
     assert v.goto_agls == []
     assert any(abs(g[2] - (-0.22)) < 1e-9 for g in v.gotos)
+
+
+@pytest.mark.asyncio
+async def test_offboard_agl_refuses_without_lidar(monkeypatch):
+    """Fail closed: no goto_global_agl / pulse when DISTANCE_SENSOR missing."""
+    monkeypatch.setattr(
+        "weed_spray.backend.mission.settings",
+        Settings(hover_altitude_mode="offboard_agl", hover_agl_m=0.22, scan_agl_m=2.0),
+    )
+    v = FakeVehicle()
+    v.connected = True
+    v._telem.lat = 40.01
+    v._telem.lon = -105.01
+    v._telem.distance_sensor_missing = True
+    v._telem.distance_sensor_m = None
+    m = Mission(v)
+    m.state.detections = [
+        Detection(id="w1", class_name="dandelion", north_m=1.0, east_m=2.0, conf=0.9)
+    ]
+    m.state.confirms = [ConfirmDecision(detection_id="w1", decision="confirm")]
+    with pytest.raises(RuntimeError, match="DISTANCE_SENSOR"):
+        await m._visit_confirmed()
+    assert v.goto_agls == []
+    assert v.pulses == 0
+
+
+@pytest.mark.asyncio
+async def test_offboard_agl_refuses_when_distance_none(monkeypatch):
+    monkeypatch.setattr(
+        "weed_spray.backend.mission.settings",
+        Settings(hover_altitude_mode="offboard_agl", hover_agl_m=0.22, scan_agl_m=2.0),
+    )
+    v = FakeVehicle()
+    v.connected = True
+    v._telem.lat = 40.01
+    v._telem.lon = -105.01
+    v._telem.distance_sensor_missing = False
+    v._telem.distance_sensor_m = None
+    m = Mission(v)
+    m.state.detections = [
+        Detection(id="w1", class_name="dandelion", north_m=1.0, east_m=2.0, conf=0.9)
+    ]
+    m.state.confirms = [ConfirmDecision(detection_id="w1", decision="confirm")]
+    with pytest.raises(RuntimeError, match="DISTANCE_SENSOR"):
+        await m._visit_confirmed()
+    assert v.goto_agls == []
