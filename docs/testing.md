@@ -30,6 +30,7 @@ Uses `tests/fakes.py` (`FakeVehicle`) so MAVSDK never starts. Each test module h
 - Vision HTTP: class rejection, inject overwrite
 - Backend HTTP on the same asyncio loop as mission tasks
 - Compose/port contracts, dashboard route strings, harness last-run table
+- hover AGL: `WEED_HOVER_ALTITUDE_MODE=offboard_agl` uses FakeVehicle `goto_global_agl` (no live PX4)
 - extract_clip dry-run: hermetic tmp media (no gitignored backyard clip)
 - aws_uat scripts: budget_ok / start_host / stop_host with PATH stubs (no live AWS)
 - compose.gazebo.yaml: opt-in gz_x500_lidar_down pin + Makefile sitl-gz (no live Docker)

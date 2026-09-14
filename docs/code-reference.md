@@ -28,7 +28,8 @@ Pydantic settings. `env_prefix="WEED_"`, unknown env keys ignored. Does **not** 
 | `vision_url` | `http://127.0.0.1:8090` | Injector base URL |
 | `http_host` / `http_port` | `127.0.0.1` / `8000` | Backend bind |
 | `scan_agl_m` | `2.0` | Lawnmower altitude (metres) |
-| `hover_agl_m` | `0.22` | Commanded spray hover; NED down = `−this` |
+| `hover_agl_m` | `0.22` | Commanded spray hover; NED down = `−this` when mode is `ned` |
+| `hover_altitude_mode` | `ned` | `ned` (SIH) or `offboard_agl` (MAVSDK AGL / PX4 terrain-alt Offboard) |
 | `hover_min_m` / `hover_max_m` | `0.15` / `0.30` | Accept band for **measured** AGL |
 | `pump_index` | `1` | MAVSDK 1-based actuator index (Actuator Set 1) |
 | `pump_on` / `pump_off` | `1.0` / `0.0` | Scale `[-1, 1]`; OFF `0` is proposed |
@@ -478,7 +479,7 @@ In-process stand-in for MAVSDK `Vehicle`. No PX4, no sleep.
 
 Same async surface as `Vehicle`. Records `gotos`, pulse/takeoff/RTL/kill counts. Home is `40, -105`. `distance_sensor_missing=True`. `drone.action.hold` is `_async_noop`.
 
-Each method mirrors `Vehicle` without UDP: `connect` marks connected; `upload_fence` stores the box; `wait_in_air` / `arm_and_takeoff` set `in_air` immediately; `goto_ned` appends NED and does not sleep; `pulse_pump` increments `pulses` and leaves pump at 0; `kill` counts and pump-offs.
+Each method mirrors `Vehicle` without UDP: `connect` marks connected; `upload_fence` stores the box; `wait_in_air` / `arm_and_takeoff` set `in_air` immediately; `goto_ned` / `goto_global_agl` appends NED and does not sleep; `pulse_pump` increments `pulses` and leaves pump at 0; `kill` counts and pump-offs.
 
 ### `async _async_noop(*_a, **_k)`
 

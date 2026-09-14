@@ -10,7 +10,7 @@ from collections.abc import Awaitable, Callable
 from mavsdk import System
 from mavsdk.action import ActionError
 from mavsdk.geofence import FenceType, GeofenceData, Point, Polygon
-from mavsdk.offboard import OffboardError, PositionNedYaw
+from mavsdk.offboard import OffboardError, PositionGlobalYaw, PositionNedYaw
 from mavsdk.telemetry import FlightMode
 
 from .config import settings
@@ -236,6 +236,25 @@ class Vehicle:
     async def goto_ned(self, north: float, east: float, down: float, settle_s: float = 2.0) -> None:
         """Command Offboard position. ``down`` is NED z (positive down). Sleeps ``settle_s``."""
         await self.drone.offboard.set_position_ned(PositionNedYaw(north, east, down, 0.0))
+        await asyncio.sleep(settle_s)
+
+    async def goto_global_agl(
+        self, lat_deg: float, lon_deg: float, agl_m: float, settle_s: float = 2.0
+    ) -> None:
+        """Offboard global AGL hover via MAVSDK ``AltitudeType.AGL``.
+
+        Maps to PX4 ``MAV_FRAME_GLOBAL_TERRAIN_ALT_INT`` (docs.px4.io Offboard).
+        No PX4 params are written here — terrain/rangefinder fusion must already
+        be live on the airframe (Gazebo ``gz_x500_lidar_down`` candidate).
+        """
+        sp = PositionGlobalYaw(
+            lat_deg,
+            lon_deg,
+            agl_m,
+            0.0,
+            PositionGlobalYaw.AltitudeType.AGL,
+        )
+        await self.drone.offboard.set_position_global(sp)
         await asyncio.sleep(settle_s)
 
     async def pulse_pump(self, duration_s: float) -> None:

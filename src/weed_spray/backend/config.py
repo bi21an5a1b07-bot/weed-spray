@@ -16,7 +16,10 @@ class Settings(BaseSettings):
         vision_url: Injector base URL.
         http_host / http_port: Backend bind.
         scan_agl_m: Lawnmower altitude in metres (not 6-12 in).
-        hover_agl_m: Commanded spray hover; NED down = -this.
+        hover_agl_m: Commanded spray hover; NED down = -this when mode is ned.
+        hover_altitude_mode: ``ned`` (default SIH) or ``offboard_agl``
+            (MAVSDK PositionGlobalYaw.AltitudeType.AGL / PX4
+            MAV_FRAME_GLOBAL_TERRAIN_ALT_INT; Gazebo lidar candidate).
         hover_min_m / hover_max_m: Accept band for measured AGL.
         pump_index: MAVSDK 1-based actuator index (Actuator Set 1).
         pump_on / pump_off: Scale [-1, 1]; OFF 0.0 is proposed.
@@ -35,6 +38,7 @@ class Settings(BaseSettings):
     http_port: int = 8000
     scan_agl_m: float = 2.0
     hover_agl_m: float = 0.22
+    hover_altitude_mode: str = "ned"
     hover_min_m: float = 0.15
     hover_max_m: float = 0.30
     pump_index: int = 1
