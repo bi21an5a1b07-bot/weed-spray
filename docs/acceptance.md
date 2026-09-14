@@ -11,7 +11,7 @@ Remote AWS EC2 operator host path (SprayPO start/stop, $10/mo cap): [acceptance-
 | Path | How | Accept bar today |
 |---|---|---|
 | **SIH (default)** | `make sitl` (`compose.yaml`) | Exit `1`; step 7 missing / fail — honest SIH bar |
-| **Gazebo (opt-in)** | `make sitl-gz` (`compose.gazebo.yaml`, `-p weed-spray-gz`) | Vehicle cam now on `rtsp://127.0.0.1:8554/cam` (GstCameraSystem RTP `:5600` → MediaMTX `udp+rtp` + `rtpSDP` in `sitl/mediamtx-gazebo.yml`). Full-green **not yet** — Offboard lidar-hold still open on [#19](https://github.com/bi21an5a1b07-bot/weed-spray/issues/19). Do **not** claim exit `0` |
+| **Gazebo (opt-in)** | `make sitl-gz` (`compose.gazebo.yaml`, `-p weed-spray-gz`); backend `WEED_HOVER_ALTITUDE_MODE=offboard_agl` | Vehicle cam on `rtsp://127.0.0.1:8554/cam`. Hover seam: latch scan-height stream → NED → in-band → AGL hold (default `ned` unchanged). Mirrors clear stream; lag does not unlock. Full-green **not yet** — live step 7 UAT is operator WSL on [#19](https://github.com/bi21an5a1b07-bot/weed-spray/issues/19). Do **not** claim exit `0` |
 
 Default `make sitl` is unchanged. Do not start Gazebo on the shared bot VM. Details: [sitl.md](sitl.md).
 
@@ -54,9 +54,21 @@ Four terminals (or equivalent). Backend / vision / dashboard stay on the **host*
 ```bash
 make sitl                 # builds media/smoke.mp4 if missing, then docker compose up -d
 uv run weed-spray-vision  # :8090
-uv run weed-spray         # :8000
+uv run weed-spray         # :8000  (default WEED_HOVER_ALTITUDE_MODE=ned)
 (cd dashboard && npm run dev)  # :8080
 ```
+
+**Opt-in Gazebo (operator WSL only — not the bot VM):**
+
+```bash
+make sitl-gz
+uv run weed-spray-vision
+WEED_HOVER_ALTITUDE_MODE=offboard_agl uv run weed-spray
+(cd dashboard && npm run dev)
+make accept
+```
+
+The env var belongs on the **backend**, not on `make sitl-gz`. `offboard_agl` **latches** scan-height non-mirror stream **before** NED hover (hover mirrors can clear telem). After descend: trusted AGL in 0.15–0.30 m **and** that latch. No `relative_alt` or a later SIH mirror clears stream; ds=2 m while rel is still ~0.22 m does not unlock. Missing either gate → `RuntimeError`, no TERRAIN_ALT, no pulse. Step 7 still grades `hover_agl_m[]` from trusted `DISTANCE_SENSOR` (not `relative_alt` / local `z`). Do not claim exit `0` until that run is green. If terrain-alt Offboard does not hold, paste `var/last-run.md` — do not invent `EKF2_RNG_*` / `MPC_ALT_MODE` workarounds.
 
 Optional: open http://127.0.0.1:8080 to watch. The harness does not need a human click for confirm — it POSTs `/confirm` as the harness-as-human (backend still requires that message; inject never confirms).
 
@@ -109,7 +121,7 @@ Default PX4 SIH still expects an honest fail on hover AGL. SIH may publish a bog
 
 Do not treat GPS / `vehicle_local_position.z` as AGL. Do not invent rangefinder PX4 params to fake a green table. "Good enough for SIH" = processes up + steps 1–6 and 10 behaving as above + honest step 7 fail — **not** `make accept` exit `0`.
 
-Exit `0` only with a real rangefinder in the 0.15–0.30 m band (hardware, or Gazebo once Offboard lidar-hold lands on #19). Opt-in `make sitl-gz` now has vehicle cam on `8554/cam` but still does **not** deliver full-green / exit `0`. Default compose remains SIH.
+Exit `0` only with a real rangefinder in the 0.15–0.30 m band (hardware, or Gazebo after live Offboard AGL hover UAT on #19). App seam: `WEED_HOVER_ALTITUDE_MODE=offboard_agl` on the backend. Opt-in `make sitl-gz` has vehicle cam on `8554/cam` but still does **not** deliver full-green / exit `0`. Default compose remains SIH.
 
 ## After the run
 

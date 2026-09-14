@@ -36,9 +36,11 @@ Accurate profile for issue [#19](https://github.com/bi21an5a1b07-bot/weed-spray/
 - WSL: `network_mode: host` + `extra_hosts: host.docker.internal:127.0.0.1` (same HEARTBEAT fix as SIH)
 - Do not start Gazebo on the shared Grok Bot VM — operator WSL only (AWS later only if RAM allows)
 
-**Hover / lidar-hold blocker:** PX4 `MPC_ALT_MODE` terrain hold is **Position/Altitude only, not Offboard** ([PX4 terrain following / holding](https://docs.px4.io/main/en/flying/terrain_following_holding.html)). Do **not** fake AGL with local `z`. Do not invent `EKF2_RNG_*`, `COM_RCL_EXCEPT`, `NAV_RCL_ACT=0`, or `COM_RC_IN_MODE=4`. Offboard lidar-hold remains open on #19.
+**Hover command (app seam, PR #25):** default `WEED_HOVER_ALTITUDE_MODE=ned` still does `goto_ned(..., down=-hover_agl_m)` (SIH). Opt-in `offboard_agl`: **latch** scan-height `distance_sensor_stream_alive` **before** NED hover (hover-height SIH mirrors can clear the telem flag). Stream-alive sets only when both ds and `relative_alt` are contemporaneous scan-height (`[1, 5]` m) and not a mirror; `relative_alt is None` or a later mirror **clears** it (no lag unlock). Then NED approach to hover. After descend: trusted `distance_reading_m` in `[hover_min_m, hover_max_m]` **and** the latched stream_ok. Only then `Vehicle.goto_global_agl` — MAVSDK `AltitudeType.AGL` / `MAV_FRAME_GLOBAL_TERRAIN_ALT_INT`. `hover_agl_m` is **positive AGL metres**. **No PX4 params written.**
 
-Live gz `make accept` exit `0` is **not** available yet (cam path landed; Offboard lidar-hold still open). SIH bar unchanged (exit `1`, step 7 missing). See [acceptance.md](acceptance.md).
+**Not claimed live:** PX4 `MPC_ALT_MODE` terrain hold is still **Position/Altitude only, not Offboard** ([PX4 terrain following / holding](https://docs.px4.io/main/en/flying/terrain_following_holding.html)). Do **not** fake AGL with local `z`. Do not invent `EKF2_RNG_*`, `COM_RCL_EXCEPT`, `NAV_RCL_ACT=0`, or `COM_RC_IN_MODE=4`. Whether terrain-alt Offboard actually holds 0.15–0.30 m on `gz_x500_lidar_down` is **operator WSL UAT** — put `WEED_HOVER_ALTITUDE_MODE=offboard_agl` on the **backend** (`uv run weed-spray`), not on `make sitl-gz`. Grade step 7 from `DISTANCE_SENSOR`, not `relative_alt`. Paste `var/last-run.md` if it does not hold.
+
+Live gz `make accept` exit `0` is **not** claimed (cam path landed; Offboard AGL hover UAT still open on #19). SIH bar unchanged (exit `1`, step 7 missing). See [acceptance.md](acceptance.md).
 
 ## Accept script
 

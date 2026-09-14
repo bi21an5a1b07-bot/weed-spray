@@ -121,7 +121,7 @@ Ruff config is `[tool.ruff]` in `pyproject.toml`. Do not disable a rule to hide 
 | `bot_files/weeds_class-map.md` | `nc=4`; never renumber 0/1/2 |
 
 Default SIH compose images stay exactly: `px4io/px4-sitl` (`PX4_SIM_MODEL=sihsim_quadx`), `bluenviron/mediamtx`, `mwader/static-ffmpeg:7.1` (binary is `/ffmpeg`). `network_mode: host`. One vehicle.
-Opt-in Gazebo profile (`compose.gazebo.yaml` / `make sitl-gz`): `px4io/px4-sitl-gazebo` + `gz_x500_lidar_down` (repo lidar+cam overlay) + MediaMTX `udp+rtp://127.0.0.1:5600` with H264 PT 96 `rtpSDP` → `8554/cam`. Distinct compose project `weed-spray-gz`. Do not start Gazebo on the shared bot VM. Offboard lidar-hold still open on #19 — do not invent PX4 params.
+Opt-in Gazebo profile (`compose.gazebo.yaml` / `make sitl-gz`): `px4io/px4-sitl-gazebo` + `gz_x500_lidar_down` (repo lidar+cam overlay) + MediaMTX `udp+rtp://127.0.0.1:5600` with H264 PT 96 `rtpSDP` → `8554/cam`. Distinct compose project `weed-spray-gz`. Do not start Gazebo on the shared bot VM. Hover seam: `WEED_HOVER_ALTITUDE_MODE=offboard_agl` on the backend (latch scan-height stream → NED → in-band → AGL hold); default `ned`. No stream_alive without `relative_alt`; mirrors clear it; lag does not unlock. Live sitl-gz hold UAT still open on #19 — do not invent PX4 params.
 
 ## SITL vs hardware
 
