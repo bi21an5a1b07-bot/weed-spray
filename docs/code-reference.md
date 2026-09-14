@@ -182,6 +182,11 @@ Send one NED setpoint then `offboard.start()`. MAVSDK keeps ≥ 2 Hz. One retry 
 
 Offboard position. `down` is NED z (positive down). Sleeps `settle_s` (FakeVehicle does not sleep).
 
+#### `async Vehicle.goto_global_agl(lat_deg, lon_deg, agl_m, settle_s=2.0)`
+
+Offboard global AGL via MAVSDK `PositionGlobalYaw.AltitudeType.AGL` (PX4 `MAV_FRAME_GLOBAL_TERRAIN_ALT_INT`). Sleeps `settle_s` (FakeVehicle records `(lat, lon, agl_m)` and does not sleep). Mission refuses this path without usable `DISTANCE_SENSOR`.
+
+
 #### `async Vehicle.set_pump(value)`
 
 `action.set_actuator(pump_index, value)` on `[-1, 1]`. OFF is `0.0`. Records `pump_value`. Re-raises `ActionError`.
@@ -479,7 +484,7 @@ In-process stand-in for MAVSDK `Vehicle`. No PX4, no sleep.
 
 Same async surface as `Vehicle`. Records `gotos`, pulse/takeoff/RTL/kill counts. Home is `40, -105`. `distance_sensor_missing=True`. `drone.action.hold` is `_async_noop`.
 
-Each method mirrors `Vehicle` without UDP: `connect` marks connected; `upload_fence` stores the box; `wait_in_air` / `arm_and_takeoff` set `in_air` immediately; `goto_ned` / `goto_global_agl` appends NED and does not sleep; `pulse_pump` increments `pulses` and leaves pump at 0; `kill` counts and pump-offs.
+Each method mirrors `Vehicle` without UDP: `connect` marks connected; `upload_fence` stores the box; `wait_in_air` / `arm_and_takeoff` set `in_air` immediately; `goto_ned` appends NED; `goto_global_agl` appends `(lat, lon, agl_m)`; neither sleeps; `pulse_pump` increments `pulses` and leaves pump at 0; `kill` counts and pump-offs.
 
 ### `async _async_noop(*_a, **_k)`
 
