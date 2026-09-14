@@ -30,6 +30,7 @@ Pydantic settings. `env_prefix="WEED_"`, unknown env keys ignored. Does **not** 
 | `scan_agl_m` | `2.0` | Lawnmower altitude (metres) |
 | `hover_agl_m` | `0.22` | Commanded spray hover; NED down = `−this` when mode is `ned` |
 | `hover_altitude_mode` | `ned` | `ned` (SIH) or `offboard_agl` (MAVSDK AGL / PX4 terrain-alt Offboard) |
+| `lidar_expected` | `false` | Required `true` with `offboard_agl` (Gazebo); SIH stays false |
 | `hover_min_m` / `hover_max_m` | `0.15` / `0.30` | Accept band for **measured** AGL |
 | `pump_index` | `1` | MAVSDK 1-based actuator index (Actuator Set 1) |
 | `pump_on` / `pump_off` | `1.0` / `0.0` | Scale `[-1, 1]`; OFF `0` is proposed |
@@ -184,7 +185,7 @@ Offboard position. `down` is NED z (positive down). Sleeps `settle_s` (FakeVehic
 
 #### `async Vehicle.goto_global_agl(lat_deg, lon_deg, agl_m, settle_s=2.0)`
 
-Offboard global AGL via MAVSDK `PositionGlobalYaw.AltitudeType.AGL` (PX4 `MAV_FRAME_GLOBAL_TERRAIN_ALT_INT`). Sleeps `settle_s` (FakeVehicle records `(lat, lon, agl_m)` and does not sleep). Mission NED-approaches hover, requires trusted in-band AGL, then `goto_global_agl` hold (no TERRAIN_ALT before lidar). SIH mirrors never mark `distance_sensor_stream_alive`.
+Offboard global AGL via MAVSDK `PositionGlobalYaw.AltitudeType.AGL` (PX4 `MAV_FRAME_GLOBAL_TERRAIN_ALT_INT`). Sleeps `settle_s` (FakeVehicle records `(lat, lon, agl_m)` and does not sleep). Mission requires `WEED_LIDAR_EXPECTED`, latches scan-height stream (flat ds≈rel ok), NED-approaches, in-band, then `goto_global_agl`.
 
 
 #### `async Vehicle.set_pump(value)`

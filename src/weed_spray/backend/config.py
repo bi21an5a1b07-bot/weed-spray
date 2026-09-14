@@ -20,6 +20,9 @@ class Settings(BaseSettings):
         hover_altitude_mode: ``ned`` (default SIH) or ``offboard_agl``
             (MAVSDK PositionGlobalYaw.AltitudeType.AGL / PX4
             MAV_FRAME_GLOBAL_TERRAIN_ALT_INT; Gazebo lidar candidate).
+        lidar_expected: Explicit belly-lidar / Gazebo capability flag.
+            Default False (SIH). Required True with offboard_agl — SIH
+            cannot fake this; flat Gazebo sets WEED_LIDAR_EXPECTED=1.
         hover_min_m / hover_max_m: Accept band for measured AGL.
         pump_index: MAVSDK 1-based actuator index (Actuator Set 1).
         pump_on / pump_off: Scale [-1, 1]; OFF 0.0 is proposed.
@@ -39,6 +42,7 @@ class Settings(BaseSettings):
     scan_agl_m: float = 2.0
     hover_agl_m: float = 0.22
     hover_altitude_mode: str = "ned"
+    lidar_expected: bool = False
     hover_min_m: float = 0.15
     hover_max_m: float = 0.30
     pump_index: int = 1

@@ -96,12 +96,11 @@ def apply_distance_sample(
 
     Short-range trust (``distance_sensor_m``) is unchanged (#12).
 
-    ``distance_sensor_stream_alive`` is for Offboard TERRAIN_ALT unlock only:
-    - fail closed when ``relative_alt_m`` is None (cannot validate mirrors)
-    - clear on any SIH relative-alt mirror (including hover-height ~0.22 m)
-    - set only for contemporaneous scan-height samples (both ds and relative_alt
-      in ``[stream_min_m, stream_max_m]``) that are not mirrors — blocks lag
-      unlocks where relative_alt is still near hover while ds reads ~scan
+    ``distance_sensor_stream_alive`` marks a contemporaneous scan-height sample
+    (ds and relative_alt both in ``[stream_min_m, stream_max_m]``). Fail closed
+    when ``relative_alt_m`` is None or still near hover while ds reads scan
+    (lag unlock). Does **not** treat ds≈relative_alt as SIH-only — flat Gazebo
+    belly lidar agrees with relative_alt too. SIH refuse is ``WEED_LIDAR_EXPECTED``.
     """
     parsed = distance_reading_m(current, relative_alt_m)
     if parsed is None:
@@ -112,18 +111,13 @@ def apply_distance_sample(
         telem.distance_sensor_m = parsed
 
     value = _parse_distance_m(current)
-    if value is None:
-        return
-    if relative_alt_m is None:
+    if value is None or relative_alt_m is None:
         return
     try:
         rel = float(relative_alt_m)
     except (TypeError, ValueError):
         return
     if math.isnan(rel):
-        return
-    if is_relative_alt_mirror(value, rel, mirror_min_m=0.0):
-        telem.distance_sensor_stream_alive = False
         return
     if stream_min_m <= value <= stream_max_m and stream_min_m <= rel <= stream_max_m:
         telem.distance_sensor_stream_alive = True

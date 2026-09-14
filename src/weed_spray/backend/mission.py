@@ -224,10 +224,15 @@ class Mission:
             det.visited = True
             self._set_phase(MissionPhase.hovering)
             if settings.hover_altitude_mode == "offboard_agl":
+                if not settings.lidar_expected:
+                    raise RuntimeError(
+                        "offboard_agl refused: WEED_LIDAR_EXPECTED must be set "
+                        "(SIH has no belly lidar; Gazebo sets it explicitly)"
+                    )
                 telem = self.vehicle.telemetry
                 if telem.lat is None or telem.lon is None:
                     raise RuntimeError("offboard_agl hover needs lat/lon telemetry")
-                # Latch scan-height stream before NED hover (mirrors may clear telem).
+                # Latch scan-height stream before NED hover.
                 stream_ok = telem.distance_sensor_stream_alive
                 # NED approach first — never command TERRAIN_ALT until trusted lidar.
                 await self.vehicle.goto_ned(det.north_m, det.east_m, down_hover, settle_s=3.0)
@@ -241,7 +246,7 @@ class Mission:
                 if not stream_ok:
                     raise RuntimeError(
                         "offboard_agl refused: DISTANCE_SENSOR stream not alive "
-                        "(need a non-SIH-mirror scan-height sample before TERRAIN_ALT)"
+                        "(need a scan-height sample with relative_alt before TERRAIN_ALT)"
                     )
                 await self.vehicle.goto_global_agl(
                     telem.lat, telem.lon, settings.hover_agl_m, settle_s=3.0
