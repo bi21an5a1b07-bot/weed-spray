@@ -236,6 +236,11 @@ class Mission:
                     raise RuntimeError(
                         f"offboard_agl refused: hover AGL out of band ({telem.distance_sensor_m} m)"
                     )
+                if not telem.distance_sensor_stream_alive:
+                    raise RuntimeError(
+                        "offboard_agl refused: DISTANCE_SENSOR stream not alive "
+                        "(need a non-SIH-mirror sample before TERRAIN_ALT)"
+                    )
                 await self.vehicle.goto_global_agl(
                     telem.lat, telem.lon, settings.hover_agl_m, settle_s=3.0
                 )

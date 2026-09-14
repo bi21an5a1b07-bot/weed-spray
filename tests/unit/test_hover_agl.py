@@ -27,6 +27,16 @@ def test_sih_mirror_does_not_count_as_stream_alive():
     assert telem.distance_sensor_missing is True
 
 
+def test_sih_hover_mirror_does_not_count_as_stream_alive():
+    """Hover-height SIH mirror (~0.22) must not open TERRAIN_ALT."""
+    telem = Telemetry()
+    apply_distance_sample(telem, 0.22, relative_alt_m=0.22)
+    assert telem.distance_sensor_stream_alive is False
+    # short-range trust bar still keeps the reading for sampling / ned path
+    assert telem.distance_sensor_m == 0.22
+    assert telem.distance_sensor_missing is False
+
+
 def test_non_mirror_scan_height_marks_stream_alive():
     telem = Telemetry()
     apply_distance_sample(telem, 2.0, relative_alt_m=2.8)
@@ -65,6 +75,8 @@ async def test_visit_offboard_agl_ned_approach_then_agl_hold(monkeypatch):
     v.connected = True
     v._telem.lat = 40.01
     v._telem.lon = -105.01
+    # prior non-mirror sample (e.g. scan height with baro offset)
+    v._telem.distance_sensor_stream_alive = True
     v.agl_after_descend_m = 0.22
     m = _mission(v)
     await m._visit_confirmed()
@@ -126,6 +138,33 @@ async def test_offboard_agl_refuses_pulse_when_out_of_band(monkeypatch):
     v.agl_after_descend_m = 0.50
     m = _mission(v)
     with pytest.raises(RuntimeError, match="band"):
+        await m._visit_confirmed()
+    assert v.goto_agls == []
+    assert v.pulses == 0
+
+
+@pytest.mark.asyncio
+async def test_offboard_agl_refuses_when_only_hover_sih_mirror(monkeypatch):
+    """In-band SIH hover mirror without prior non-mirror stream → no AGL / pulse."""
+    monkeypatch.setattr(
+        "weed_spray.backend.mission.settings",
+        Settings(
+            hover_altitude_mode="offboard_agl",
+            hover_agl_m=0.22,
+            hover_min_m=0.15,
+            hover_max_m=0.30,
+            scan_agl_m=2.0,
+        ),
+    )
+    v = FakeVehicle()
+    v.connected = True
+    v._telem.lat = 40.01
+    v._telem.lon = -105.01
+    v._telem.relative_alt_m = 0.22
+    v._telem.distance_sensor_stream_alive = False
+    v.agl_after_descend_m = 0.22  # looks in-band but stream never non-mirror
+    m = _mission(v)
+    with pytest.raises(RuntimeError, match="stream"):
         await m._visit_confirmed()
     assert v.goto_agls == []
     assert v.pulses == 0

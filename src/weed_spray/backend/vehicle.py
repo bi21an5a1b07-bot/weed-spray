@@ -98,10 +98,12 @@ def apply_distance_sample(
     do not). ``distance_sensor_m`` stays the short-range trust bar (#12).
     """
     value = _parse_distance_m(current)
+    # Stream-alive: reject SIH mirrors at ANY altitude (mirror_min_m=0), including
+    # hover-height ~0.22 m locks. Short-range trust below still keeps low readings.
     if (
         value is not None
         and value <= stream_max_m
-        and not is_relative_alt_mirror(value, relative_alt_m)
+        and not is_relative_alt_mirror(value, relative_alt_m, mirror_min_m=0.0)
     ):
         telem.distance_sensor_stream_alive = True
     parsed = distance_reading_m(current, relative_alt_m)
