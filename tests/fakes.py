@@ -20,7 +20,7 @@ class FakeVehicle:
         self.fence: FenceBox | None = None
         self.gotos: list[tuple[float, float, float]] = []
         self.goto_agls: list[tuple[float, float, float]] = []
-        self.agl_after_descend_m: float = 0.22
+        self.agl_after_descend_m: float | None = None  # SIH-like; set for lidar tests
         self.pulses = 0
         self.armed_takeoff = 0
         self.waited_in_air = 0
