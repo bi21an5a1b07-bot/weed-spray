@@ -160,7 +160,7 @@ If `on_failsafe` is set, await it. `kind` is a `PumpOffEvent.type`.
 | `_track_armed` | `armed` | `telemetry.armed` |
 | `_track_in_air` | `in_air` | used for RC-first takeoff |
 | `_track_heading` | `heading` | `heading_deg` |
-| `_track_distance` | `distance_sensor` | raw > 0 → `distance_sensor_stream_alive`; `distance_reading_m`; `None`/exception → `distance_sensor_missing` |
+| `_track_distance` | `distance_sensor` | `apply_distance_sample` (non-mirror ≤5 m → stream alive; short-range trust → `distance_sensor_m`) |
 
 #### `async Vehicle.upload_fence(box)`
 
@@ -184,7 +184,7 @@ Offboard position. `down` is NED z (positive down). Sleeps `settle_s` (FakeVehic
 
 #### `async Vehicle.goto_global_agl(lat_deg, lon_deg, agl_m, settle_s=2.0)`
 
-Offboard global AGL via MAVSDK `PositionGlobalYaw.AltitudeType.AGL` (PX4 `MAV_FRAME_GLOBAL_TERRAIN_ALT_INT`). Sleeps `settle_s` (FakeVehicle records `(lat, lon, agl_m)` and does not sleep). Mission requires DISTANCE_SENSOR stream alive pre-goto; trusted in-band AGL after descend before pulse.
+Offboard global AGL via MAVSDK `PositionGlobalYaw.AltitudeType.AGL` (PX4 `MAV_FRAME_GLOBAL_TERRAIN_ALT_INT`). Sleeps `settle_s` (FakeVehicle records `(lat, lon, agl_m)` and does not sleep). Mission NED-approaches hover, requires trusted in-band AGL, then `goto_global_agl` hold (no TERRAIN_ALT before lidar). SIH mirrors never mark `distance_sensor_stream_alive`.
 
 
 #### `async Vehicle.set_pump(value)`

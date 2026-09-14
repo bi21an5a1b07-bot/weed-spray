@@ -68,14 +68,19 @@ class FakeVehicle:
         self.gotos.append((north, east, down))
 
     async def goto_ned(self, north: float, east: float, down: float, settle_s: float = 0.0) -> None:
-        """Append NED without sleeping ``settle_s``."""
+        """Append NED; simulate lidar after near-ground descend (``|down|`` ≤ 1 m)."""
         self.gotos.append((north, east, down))
+        if abs(down) <= 1.0:
+            self._apply_descend_reading()
 
     async def goto_global_agl(
         self, lat_deg: float, lon_deg: float, agl_m: float, settle_s: float = 0.0
     ) -> None:
-        """Append AGL hover; simulate descend into ``agl_after_descend_m``."""
+        """Append AGL hold without sleeping (reading already set by NED approach)."""
         self.goto_agls.append((lat_deg, lon_deg, agl_m))
+
+    def _apply_descend_reading(self) -> None:
+        """Apply ``agl_after_descend_m`` after a near-ground NED setpoint."""
         reading = self.agl_after_descend_m
         if reading is None:
             self._telem.distance_sensor_missing = True

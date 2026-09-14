@@ -5,7 +5,8 @@ import pytest
 from tests.fakes import FakeVehicle
 from weed_spray.backend.config import Settings
 from weed_spray.backend.mission import Mission
-from weed_spray.backend.models import ConfirmDecision, Detection
+from weed_spray.backend.models import ConfirmDecision, Detection, Telemetry
+from weed_spray.backend.vehicle import apply_distance_sample, is_relative_alt_mirror
 
 
 def _mission(v: FakeVehicle) -> Mission:
@@ -17,6 +18,29 @@ def _mission(v: FakeVehicle) -> Mission:
     return m
 
 
+def test_sih_mirror_does_not_count_as_stream_alive():
+    assert is_relative_alt_mirror(2.0, 2.0) is True
+    assert is_relative_alt_mirror(11.97, 12.0) is True
+    telem = Telemetry()
+    apply_distance_sample(telem, 2.0, relative_alt_m=2.0)
+    assert telem.distance_sensor_stream_alive is False
+    assert telem.distance_sensor_missing is True
+
+
+def test_non_mirror_scan_height_marks_stream_alive():
+    telem = Telemetry()
+    apply_distance_sample(telem, 2.0, relative_alt_m=2.8)
+    assert telem.distance_sensor_stream_alive is True
+    assert telem.distance_sensor_m is None  # still outside short-range trust
+
+
+def test_absurd_high_non_mirror_does_not_mark_stream_alive():
+    """SIH high-while-low junk must not open TERRAIN_ALT."""
+    telem = Telemetry()
+    apply_distance_sample(telem, 12.0, relative_alt_m=0.22)
+    assert telem.distance_sensor_stream_alive is False
+
+
 @pytest.mark.asyncio
 async def test_goto_global_agl_records_lat_lon_agl():
     v = FakeVehicle()
@@ -25,8 +49,8 @@ async def test_goto_global_agl_records_lat_lon_agl():
 
 
 @pytest.mark.asyncio
-async def test_visit_uses_offboard_agl_when_stream_alive(monkeypatch):
-    """Stream alive at scan height; in-band only after FakeVehicle descend."""
+async def test_visit_offboard_agl_ned_approach_then_agl_hold(monkeypatch):
+    """NED to hover first; AGL hold only after in-band trusted lidar."""
     monkeypatch.setattr(
         "weed_spray.backend.mission.settings",
         Settings(
@@ -41,15 +65,12 @@ async def test_visit_uses_offboard_agl_when_stream_alive(monkeypatch):
     v.connected = True
     v._telem.lat = 40.01
     v._telem.lon = -105.01
-    # scan height: stream alive, short-range trust missing (like ~2 m lidar)
-    v._telem.distance_sensor_stream_alive = True
-    v._telem.distance_sensor_missing = True
-    v._telem.distance_sensor_m = None
+    v.agl_after_descend_m = 0.22
     m = _mission(v)
     await m._visit_confirmed()
     assert v.goto_agls[-1] == (40.01, -105.01, 0.22)
-    assert m.state.hover_agl_m[0].missing is False
-    assert m.state.hover_agl_m[0].agl_m == pytest.approx(0.22)
+    # NED hover approach happened before AGL
+    assert any(abs(g[2] - (-0.22)) < 1e-9 for g in v.gotos)
     assert v.pulses == 1
 
 
@@ -68,8 +89,8 @@ async def test_visit_default_ned_does_not_call_agl(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_offboard_agl_refuses_when_stream_dead(monkeypatch):
-    """Pre-goto: no stream → no goto_global_agl / pulse (SIH)."""
+async def test_offboard_agl_refuses_agl_when_sih_mirror_only(monkeypatch):
+    """SIH mirrors: NED approach ok, but no trusted band → no goto_global_agl / pulse."""
     monkeypatch.setattr(
         "weed_spray.backend.mission.settings",
         Settings(hover_altitude_mode="offboard_agl", hover_agl_m=0.22, scan_agl_m=2.0),
@@ -78,19 +99,16 @@ async def test_offboard_agl_refuses_when_stream_dead(monkeypatch):
     v.connected = True
     v._telem.lat = 40.01
     v._telem.lon = -105.01
-    v._telem.distance_sensor_stream_alive = False
-    v._telem.distance_sensor_missing = True
-    v._telem.distance_sensor_m = None
+    v.agl_after_descend_m = None  # still missing after NED hover
     m = _mission(v)
-    with pytest.raises(RuntimeError, match="stream"):
+    with pytest.raises(RuntimeError, match="trusted hover AGL"):
         await m._visit_confirmed()
     assert v.goto_agls == []
     assert v.pulses == 0
 
 
 @pytest.mark.asyncio
-async def test_offboard_agl_refuses_pulse_when_out_of_band_after_descend(monkeypatch):
-    """After AGL goto, out-of-band trusted reading → no pulse."""
+async def test_offboard_agl_refuses_pulse_when_out_of_band(monkeypatch):
     monkeypatch.setattr(
         "weed_spray.backend.mission.settings",
         Settings(
@@ -105,12 +123,9 @@ async def test_offboard_agl_refuses_pulse_when_out_of_band_after_descend(monkeyp
     v.connected = True
     v._telem.lat = 40.01
     v._telem.lon = -105.01
-    v._telem.distance_sensor_stream_alive = True
-    v._telem.distance_sensor_missing = True
-    v._telem.distance_sensor_m = None
-    v.agl_after_descend_m = 0.50  # out of band
+    v.agl_after_descend_m = 0.50
     m = _mission(v)
     with pytest.raises(RuntimeError, match="band"):
         await m._visit_confirmed()
-    assert v.goto_agls
+    assert v.goto_agls == []
     assert v.pulses == 0
