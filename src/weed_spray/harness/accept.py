@@ -126,6 +126,7 @@ def main(argv: list[str] | None = None) -> int:
         except httpx.HTTPError as exc:
             grade(STEPS[3], False, str(exc))
 
+        scan_ok = False
         try:
             http.post(f"{BACKEND}/scan", json={"source": "dashboard"}).raise_for_status()
             armed = True
@@ -136,34 +137,42 @@ def main(argv: list[str] | None = None) -> int:
                 if phase in {"awaiting_confirm", "killed", "error"}:
                     break
                 time.sleep(1)
-            grade(STEPS[2], phase == "awaiting_confirm", f"phase={phase}")
+            scan_ok = phase == "awaiting_confirm"
+            grade(STEPS[2], scan_ok, f"phase={phase}")
         except httpx.HTTPError as exc:
             grade(STEPS[2], False, str(exc))
 
-        try:
-            http.post(f"{BACKEND}/confirm", json={"ids": ["w1"]}).raise_for_status()
-            st = http.get(f"{BACKEND}/state").json()
-            confirmed = [
-                c["detection_id"] for c in st.get("confirms", []) if c.get("decision") == "confirm"
-            ]
-            if not confirmed:
-                confirmed = [d["id"] for d in st["detections"] if d.get("confirmed")]
-            grade(STEPS[4], confirmed == ["w1"], f"confirmed={confirmed}")
-        except httpx.HTTPError as ext:
-            grade(STEPS[4], False, str(ext))
-
-        try:
-            http.post(f"{BACKEND}/visit").raise_for_status()
-            deadline = time.time() + 180
-            while time.time() < deadline:
+        st = http.get(f"{BACKEND}/state").json() if armed else {}
+        if scan_ok:
+            try:
+                http.post(f"{BACKEND}/confirm", json={"ids": ["w1"]}).raise_for_status()
                 st = http.get(f"{BACKEND}/state").json()
-                if st["phase"] in {"rtl", "killed", "error"}:
-                    break
-                time.sleep(1)
-            visited = [d["id"] for d in st.get("detections", []) if d.get("visited")]
-            grade(STEPS[5], "w1" in visited and "w2" not in visited, f"visited={visited}")
-        except httpx.HTTPError as exc:
-            grade(STEPS[5], False, str(exc))
+                confirmed = [
+                    c["detection_id"]
+                    for c in st.get("confirms", [])
+                    if c.get("decision") == "confirm"
+                ]
+                if not confirmed:
+                    confirmed = [d["id"] for d in st["detections"] if d.get("confirmed")]
+                grade(STEPS[4], confirmed == ["w1"], f"confirmed={confirmed}")
+            except httpx.HTTPError as ext:
+                grade(STEPS[4], False, str(ext))
+
+            try:
+                http.post(f"{BACKEND}/visit").raise_for_status()
+                deadline = time.time() + 180
+                while time.time() < deadline:
+                    st = http.get(f"{BACKEND}/state").json()
+                    if st["phase"] in {"rtl", "killed", "error"}:
+                        break
+                    time.sleep(1)
+                visited = [d["id"] for d in st.get("detections", []) if d.get("visited")]
+                grade(STEPS[5], "w1" in visited and "w2" not in visited, f"visited={visited}")
+            except httpx.HTTPError as exc:
+                grade(STEPS[5], False, str(exc))
+        else:
+            grade(STEPS[4], False, "skipped: scan not awaiting_confirm")
+            grade(STEPS[5], False, "skipped: scan not awaiting_confirm")
 
         hover = st.get("hover_agl_m") or []
         has_missing = False

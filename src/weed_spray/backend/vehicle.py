@@ -267,16 +267,28 @@ class Vehicle:
             await asyncio.sleep(0.25)
         raise TimeoutError("RC-first: vehicle not in air")
 
-    async def arm_and_takeoff(self, agl_m: float) -> None:
-        """Dashboard-first: arm, takeoff, wait until ~70% of ``agl_m``."""
+    async def arm_and_takeoff(self, agl_m: float, timeout_s: float | None = None) -> None:
+        """Dashboard-first: arm, takeoff, wait until ~70% of ``agl_m``.
+
+        ``timeout_s`` defaults to ``settings.takeoff_timeout_s`` (20 s SIH).
+        Gazebo climb is slower — set ``WEED_TAKEOFF_TIMEOUT_S`` (issue #27).
+        ``relative_alt_m`` here is only “did takeoff climb?”, not spray AGL.
+        """
         await self.drone.action.set_takeoff_altitude(agl_m)
         await self.drone.action.arm()
         await self.drone.action.takeoff()
-        for _ in range(40):
+        await self._wait_takeoff_alt(agl_m, timeout_s=timeout_s)
+
+    async def _wait_takeoff_alt(self, agl_m: float, timeout_s: float | None = None) -> None:
+        """Poll ``relative_alt_m`` until ≥ 70% of ``agl_m`` or ``TimeoutError``."""
+        limit = settings.takeoff_timeout_s if timeout_s is None else timeout_s
+        deadline = asyncio.get_event_loop().time() + limit
+        target = agl_m * 0.7
+        while asyncio.get_event_loop().time() < deadline:
             alt = self._telem.relative_alt_m or 0.0
-            if alt >= agl_m * 0.7:
+            if alt >= target:
                 return
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.25)
         raise TimeoutError("takeoff altitude not reached")
 
     async def start_offboard_hold(self, north: float, east: float, down: float) -> None:

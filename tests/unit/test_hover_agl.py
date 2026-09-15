@@ -77,7 +77,8 @@ async def test_visit_offboard_agl_happy_path_via_apply_sample(monkeypatch):
     m = _mission(v)
     await m._visit_confirmed()
     assert v.goto_agls[-1] == (40.01, -105.01, 0.22)
-    assert any(abs(g[2] - (-0.22)) < 1e-9 for g in v.gotos)
+    assert any(abs(g[2] - (-2.0)) < 1e-9 for g in v.gotos)
+    assert not any(abs(g[2] - (-0.22)) < 1e-9 for g in v.gotos)
     assert v.pulses == 1
 
 
@@ -143,7 +144,7 @@ async def test_offboard_agl_refuses_when_missing_after_descend(monkeypatch):
     m = _mission(v)
     with pytest.raises(RuntimeError, match="trusted hover AGL"):
         await m._visit_confirmed()
-    assert v.goto_agls == []
+    assert v.goto_agls[-1] == (40.01, -105.01, 0.22)
     assert v.pulses == 0
 
 
@@ -159,5 +160,5 @@ async def test_offboard_agl_refuses_pulse_when_out_of_band(monkeypatch):
     m = _mission(v)
     with pytest.raises(RuntimeError, match="band"):
         await m._visit_confirmed()
-    assert v.goto_agls == []
+    assert v.goto_agls[-1] == (40.01, -105.01, 0.22)
     assert v.pulses == 0

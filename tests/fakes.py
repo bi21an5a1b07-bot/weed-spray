@@ -55,8 +55,9 @@ class FakeVehicle:
         self._telem.in_air = True
         self._telem.armed = True
 
-    async def arm_and_takeoff(self, agl_m: float) -> None:
+    async def arm_and_takeoff(self, agl_m: float, timeout_s: float | None = None) -> None:
         """Count dashboard-first takeoffs; set relative altitude."""
+        _ = timeout_s
         self.armed_takeoff += 1
         self._telem.in_air = True
         self._telem.armed = True
@@ -76,8 +77,9 @@ class FakeVehicle:
     async def goto_global_agl(
         self, lat_deg: float, lon_deg: float, agl_m: float, settle_s: float = 0.0
     ) -> None:
-        """Append AGL hold without sleeping (reading already set by NED approach)."""
+        """Append AGL hold; apply ``agl_after_descend_m`` as the lidar reading."""
         self.goto_agls.append((lat_deg, lon_deg, agl_m))
+        self._apply_descend_reading()
 
     def _apply_descend_reading(self) -> None:
         """Apply ``agl_after_descend_m`` after a near-ground NED setpoint."""

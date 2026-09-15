@@ -38,7 +38,7 @@ Accurate profile for issue [#19](https://github.com/bi21an5a1b07-bot/weed-spray/
 
 **Hover / lidar-hold blocker:** PX4 `MPC_ALT_MODE` terrain hold is **Position/Altitude only, not Offboard** ([PX4 terrain following / holding](https://docs.px4.io/main/en/flying/terrain_following_holding.html)). Do **not** fake AGL with local `z`. Do not invent `EKF2_RNG_*`, `COM_RCL_EXCEPT`, `NAV_RCL_ACT=0`, or `COM_RC_IN_MODE=4`. Offboard lidar-hold remains open on #19.
 
-Live gz `make accept` exit `0` is **not** available yet (cam path landed; Offboard lidar-hold still open). SIH bar unchanged (exit `1`, step 7 missing). See [acceptance.md](acceptance.md).
+Live gz `make accept` exit `0` is **not** available yet (cam path landed; takeoff wait is #27; Offboard lidar-hold still open on #19). Host GCS for gz: `make backend-gz` (`WEED_TAKEOFF_TIMEOUT_S=90`). SIH bar unchanged (exit `1`, step 7 missing). See [acceptance.md](acceptance.md).
 
 ## Accept script
 
