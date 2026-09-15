@@ -23,6 +23,8 @@ class Settings(BaseSettings):
         lidar_expected: Explicit belly-lidar / Gazebo capability flag.
             Default False (SIH). Required True with offboard_agl — SIH
             cannot fake this; flat Gazebo sets WEED_LIDAR_EXPECTED=1.
+        takeoff_timeout_s: Dashboard-first wait for relative_alt ≥ 70% of
+            scan height (issue #27). Default 20 s (SIH). Gazebo needs 60-90.
         hover_min_m / hover_max_m: Accept band for measured AGL.
         pump_index: MAVSDK 1-based actuator index (Actuator Set 1).
         pump_on / pump_off: Scale [-1, 1]; OFF 0.0 is proposed.
@@ -43,6 +45,7 @@ class Settings(BaseSettings):
     hover_agl_m: float = 0.22
     hover_altitude_mode: str = "ned"
     lidar_expected: bool = False
+    takeoff_timeout_s: float = 20.0
     hover_min_m: float = 0.15
     hover_max_m: float = 0.30
     pump_index: int = 1

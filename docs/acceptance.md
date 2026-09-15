@@ -54,7 +54,7 @@ Four terminals (or equivalent). Backend / vision / dashboard stay on the **host*
 ```bash
 make sitl                 # builds media/smoke.mp4 if missing, then docker compose up -d
 uv run weed-spray-vision  # :8090
-uv run weed-spray         # :8000
+uv run weed-spray         # :8000  (SIH). For make sitl-gz: make backend-gz
 (cd dashboard && npm run dev)  # :8080
 ```
 

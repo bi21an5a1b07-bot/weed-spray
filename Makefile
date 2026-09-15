@@ -2,7 +2,7 @@
 # Backend / vision / dashboard stay on the host. See docs/cli.md.
 # Python gate: `make check` (ruff + pytest). See docs/testing.md.
 # SIH and Gazebo both use host networking — start targets tear the other down first.
-.PHONY: sitl sitl-down sitl-gz sitl-gz-down smoke-video inbox-frames promote-inbox app vision backend dashboard accept down test lint fmt check
+.PHONY: sitl sitl-down sitl-gz sitl-gz-down smoke-video inbox-frames promote-inbox app vision backend backend-gz dashboard accept down test lint fmt check
 
 smoke-video: media/smoke.mp4
 
@@ -27,6 +27,11 @@ sitl-gz-down:
 
 backend:
 	uv run weed-spray
+
+# Gazebo accurate profile (issue #19 / #27). Do not use on SIH.
+backend-gz:
+	WEED_HOVER_ALTITUDE_MODE=offboard_agl WEED_LIDAR_EXPECTED=true \
+		WEED_TAKEOFF_TIMEOUT_S=90 uv run weed-spray
 
 vision:
 	uv run weed-spray-vision
