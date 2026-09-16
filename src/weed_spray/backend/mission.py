@@ -232,18 +232,8 @@ class Mission:
                 telem = self.vehicle.telemetry
                 if telem.lat is None or telem.lon is None:
                     raise RuntimeError("offboard_agl hover needs lat/lon telemetry")
-                # Latch scan-height stream before NED hover.
-                stream_ok = telem.distance_sensor_stream_alive
-                # NED approach first — never command TERRAIN_ALT until trusted lidar.
-                await self.vehicle.goto_ned(det.north_m, det.east_m, down_hover, settle_s=3.0)
-                telem = self.vehicle.telemetry
-                if telem.distance_sensor_missing or telem.distance_sensor_m is None:
-                    raise RuntimeError("offboard_agl refused: no trusted hover AGL after descend")
-                if not (settings.hover_min_m <= telem.distance_sensor_m <= settings.hover_max_m):
-                    raise RuntimeError(
-                        f"offboard_agl refused: hover AGL out of band ({telem.distance_sensor_m} m)"
-                    )
-                if not stream_ok:
+                # XY at scan height. Do not NED-dive to -0.22 (gz lidar min ~0.10 m).
+                if not telem.distance_sensor_stream_alive:
                     raise RuntimeError(
                         "offboard_agl refused: DISTANCE_SENSOR stream not alive "
                         "(need a scan-height sample with relative_alt before TERRAIN_ALT)"
@@ -251,6 +241,13 @@ class Mission:
                 await self.vehicle.goto_global_agl(
                     telem.lat, telem.lon, settings.hover_agl_m, settle_s=3.0
                 )
+                telem = self.vehicle.telemetry
+                if telem.distance_sensor_missing or telem.distance_sensor_m is None:
+                    raise RuntimeError("offboard_agl refused: no trusted hover AGL after AGL hold")
+                if not (settings.hover_min_m <= telem.distance_sensor_m <= settings.hover_max_m):
+                    raise RuntimeError(
+                        f"offboard_agl refused: hover AGL out of band ({telem.distance_sensor_m} m)"
+                    )
             else:
                 await self.vehicle.goto_ned(det.north_m, det.east_m, down_hover, settle_s=3.0)
             telem = self.vehicle.telemetry

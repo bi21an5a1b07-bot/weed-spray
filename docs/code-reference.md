@@ -171,9 +171,9 @@ Upload a PX4 **inclusion** polygon from the typed NED box. Raises `RuntimeError`
 
 RC-first: poll until `in_air`, else `TimeoutError`.
 
-#### `async Vehicle.arm_and_takeoff(agl_m)`
+#### `async Vehicle.arm_and_takeoff(agl_m, timeout_s=None)`
 
-Dashboard-first: set takeoff altitude, arm, takeoff, wait until relative alt ≥ 70% of `agl_m` (up to 20 s). Else `TimeoutError`.
+Dashboard-first: set takeoff altitude, arm, takeoff, wait until relative alt ≥ 70% of `agl_m`. Timeout is `WEED_TAKEOFF_TIMEOUT_S` (default 20 s; Gazebo `make backend-gz` uses 90). Else `TimeoutError`. Relative alt here is climb-detect only, not spray AGL (issue #27).
 
 #### `async Vehicle.start_offboard_hold(north, east, down)`
 

@@ -40,7 +40,8 @@ Run from the repo root. `.PHONY` targets:
 | `make smoke-video` | `ffmpeg` `testsrc` → `media/smoke.mp4` (8 s, 1280×720, 15 fps) |
 | `make inbox-frames` | 1 fps unlabeled stills from the backyard clip into `weeds/inbox/` |
 | `make promote-inbox` | Copy boxed backyard stills into `weeds/dataset/{train,val}` |
-| `make backend` | `uv run weed-spray` |
+| `make backend` | `uv run weed-spray` (SIH defaults) |
+| `make backend-gz` | `uv run weed-spray` with `offboard_agl`, `WEED_LIDAR_EXPECTED=true`, 90 s takeoff wait (`make sitl-gz` only; #19 / #27) |
 | `make vision` | `uv run weed-spray-vision` |
 | `make dashboard` | `cd dashboard && npm install && npm run dev` |
 | `make accept` | `uv run weed-spray-accept --out var/last-run.md` |
