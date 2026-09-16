@@ -11,6 +11,7 @@ def test_compose_gazebo_exists_and_pins_lidar_down():
     assert "px4io/px4-sitl-gazebo" in text
     assert "PX4_SIM_MODEL: gz_x500_lidar_down" in text
     assert 'HEADLESS: "1"' in text or "HEADLESS: '1'" in text or "HEADLESS: 1" in text
+    assert "LIBGL_ALWAYS_SOFTWARE" in text
     assert "network_mode: host" in text
     assert "host.docker.internal:127.0.0.1" in text
     assert "rtsp-pub" not in text
@@ -33,6 +34,9 @@ def test_lidar_cam_overlay_model_present():
     model = REPO / "sitl/gz/models/x500_lidar_down/model.sdf"
     text = model.read_text()
     assert "gpu_lidar" in text
+    assert "0 0 -0.28 0 0 0" in text  # below gear
+    assert "0 1.5708 0" in text  # sensor +X down (#28)
+    assert "<samples>3</samples>" in text
     assert "mono_cam" in text
     assert "CameraJoint" in text
 

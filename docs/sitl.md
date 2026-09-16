@@ -29,7 +29,7 @@ Accurate profile for issue [#19](https://github.com/bi21an5a1b07-bot/weed-spray/
 - Compose: `compose.gazebo.yaml` with project `name: weed-spray-gz` (SIH uses `name: weed-spray-sih` in `compose.yaml`)
 - Targets: `make sitl-gz` / `make sitl-gz-down` use `docker compose -p weed-spray-gz …`; SIH counterparts use `-p weed-spray-sih`. `make down` tears both. Host-network (UDP **14540** + MediaMTX): `make sitl` runs **smoke-video**, then `sitl-gz-down`, then SIH up; `make sitl-gz` runs `sitl-down` then Gazebo up — do not run both composes at once. Project isolation means one profile’s `down` cannot remove the other.
 - Images (exactly those in `compose.gazebo.yaml`; do not `docker pull` extras at runtime):
-  - `px4io/px4-sitl-gazebo:latest` with `PX4_SIM_MODEL=gz_x500_lidar_down`, `HEADLESS=1`
+  - `px4io/px4-sitl-gazebo:latest` with `PX4_SIM_MODEL=gz_x500_lidar_down`, `HEADLESS=1`, `LIBGL_ALWAYS_SOFTWARE=1` (gpu_lidar otherwise sticks at 0.10 m min range in Docker/WSL — issue #28)
   - `bluenviron/mediamtx:latest` (config `sitl/mediamtx-gazebo.yml`)
 - Model overlay: repo `sitl/gz/models/x500_lidar_down` merges downward `mono_cam` onto stock `gz_x500_lidar_down` (sourced from PX4-gazebo-models `x500_mono_cam_down`)
 - **Vehicle camera is wired:** Gazebo GstCameraSystem UDP RTP **`:5600`** H264 PT 96 (ingest only — not a second GCS path) → MediaMTX `udp+rtp://127.0.0.1:5600` + H264 PT 96 `rtpSDP` in `sitl/mediamtx-gazebo.yml` → **`rtsp://127.0.0.1:8554/cam`** (one GCS URL). Dashboard still HLS `:8888`. **No** `cam-bridge`. **No** bare ffmpeg `rtp://`. **No** `smoke.mp4` on this profile.
