@@ -31,14 +31,14 @@ Nothing in the app leaves localhost. There is no ROS and no cloud LLM in the inn
 
 1. Typed geofence (local NED meters from home).
 2. Arm/takeoff: **dashboard-first** or **RC-first** (already in air).
-3. Lawnmower scan at **2.0 m** AGL. Do not scan at 6–12 in.
+3. Lawnmower scan at **2.0 m** AGL. Do not scan at spray hover.
 4. Detections: injector (v1) or future YOLO. Classes: dandelion, clover, thistle.
 5. Operator confirms a **subset**. Unconfirmed ids never pulse the pump.
-6. Per confirmed id: Offboard goto XY at scan height, then descend, hold 0.15–0.30 m, pulse 0.75 s, pump off, next.
+6. Per confirmed id: Offboard goto XY at scan height, then descend, hold **0.24–0.32 m** (commanded 0.27 m), pulse 0.75 s, pump off, next.
 7. RTL. Pump off.
 8. Kill / people-pets / RC loss / Offboard loss: pump commanded off.
 
-NED **z is down**. Hover setpoint is `down = -0.22` m from local origin; that is **not** measured AGL on SIH.
+NED **z is down**. Hover setpoint is `down = -0.27` m from local origin; that is **not** measured AGL on SIH.
 
 ## Contracts
 

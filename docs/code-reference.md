@@ -28,10 +28,12 @@ Pydantic settings. `env_prefix="WEED_"`, unknown env keys ignored. Does **not** 
 | `vision_url` | `http://127.0.0.1:8090` | Injector base URL |
 | `http_host` / `http_port` | `127.0.0.1` / `8000` | Backend bind |
 | `scan_agl_m` | `2.0` | Lawnmower altitude (metres) |
-| `hover_agl_m` | `0.22` | Commanded spray hover; NED down = `−this` when mode is `ned` |
+| `hover_agl_m` | `0.27` | Commanded spray hover (gear ~0.22 m + ~2 in); NED down = `−this` when mode is `ned` |
 | `hover_altitude_mode` | `ned` | `ned` (SIH) or `offboard_agl` (MAVSDK AGL / PX4 terrain-alt Offboard) |
 | `lidar_expected` | `false` | Required `true` with `offboard_agl` (Gazebo); SIH stays false |
-| `hover_min_m` / `hover_max_m` | `0.15` / `0.30` | Accept band for **measured** AGL |
+| `takeoff_timeout_s` | `20` | Dashboard-first wait for relative_alt ≥ 70% of scan height |
+| `hover_min_m` / `hover_max_m` | `0.24` / `0.32` | Accept band for **measured** AGL (above landing gear) |
+| `lidar_mount_down_m` | `0.0` | Belly lidar below CG; NED hover down = `-(hover_agl_m + this)` |
 | `pump_index` | `1` | MAVSDK 1-based actuator index (Actuator Set 1) |
 | `pump_on` / `pump_off` | `1.0` / `0.0` | Scale `[-1, 1]`; OFF `0` is proposed |
 | `pump_pulse_s` | `0.75` | App sleep around `set_actuator`; not a PX4 dwell |
@@ -125,7 +127,7 @@ MAVSDK wrapper. PX4 listens for offboard APIs on UDP 14540 (we bind). Does **not
 
 ### `distance_reading_m(current, relative_alt_m=None, *, mirror_eps_m=0.5, mirror_min_m=1.0, max_trust_m=1.0) -> float | None`
 
-Parse lidar metres for spray hover. `None`, non-numeric, NaN, or `<= 0` → `None` (treated as missing). Readings **≥ `max_trust_m`** (default **1 m**) → `None` so SIH bogus streams (often ~GPS/relative alt, e.g. ~12 m, or high while commanded low) cannot pretend to be AGL. Optional relative-alt mirror drop: when `relative_alt_m` is within `mirror_eps_m` of a reading at least `mirror_min_m`, return `None`; low hover (~0.15–0.30 m) stays kept even if it matches relative alt.
+Parse lidar metres for spray hover. `None`, non-numeric, NaN, or `<= 0` → `None` (treated as missing). Readings **≥ `max_trust_m`** (default **1 m**) → `None` so SIH bogus streams (often ~GPS/relative alt, e.g. ~12 m, or high while commanded low) cannot pretend to be AGL. Optional relative-alt mirror drop: when `relative_alt_m` is within `mirror_eps_m` of a reading at least `mirror_min_m`, return `None`; low hover (~0.24–0.32 m) stays kept even if it matches relative alt.
 
 ### `class Vehicle`
 
@@ -183,9 +185,13 @@ Send one NED setpoint then `offboard.start()`. MAVSDK keeps ≥ 2 Hz. One retry 
 
 Offboard position. `down` is NED z (positive down). Sleeps `settle_s` (FakeVehicle does not sleep).
 
+#### `async Vehicle.wait_lidar_hover_band(min_m, max_m, timeout_s=15.0, north=None, east=None, down=None) -> float`
+
+Poll trusted `DISTANCE_SENSOR` until it is in `[min_m, max_m]`. Proof is lidar, not local `z`. If `north`/`east`/`down` are all set, re-sends that Offboard NED each poll so PX4 does not drop Offboard. Raises `TimeoutError` with last lidar and relative_alt. FakeVehicle checks immediately (no sleep).
+
 #### `async Vehicle.goto_global_agl(lat_deg, lon_deg, agl_m, settle_s=2.0)`
 
-Offboard global AGL via MAVSDK `PositionGlobalYaw.AltitudeType.AGL` (PX4 `MAV_FRAME_GLOBAL_TERRAIN_ALT_INT`). Sleeps `settle_s` (FakeVehicle records `(lat, lon, agl_m)` and does not sleep). Mission requires `WEED_LIDAR_EXPECTED`, latches scan-height stream (flat ds≈rel ok), NED-approaches, in-band, then `goto_global_agl`.
+Offboard global AGL via MAVSDK `PositionGlobalYaw.AltitudeType.AGL` (PX4 `MAV_FRAME_GLOBAL_TERRAIN_ALT_INT`). Sleeps `settle_s` (FakeVehicle records `(lat, lon, agl_m)` and does not sleep). Mission: restart Offboard hold, stream_alive, NED step -1 m then hover, `wait_lidar_hover_band`, then `goto_global_agl`. Requires `WEED_LIDAR_EXPECTED`.
 
 
 #### `async Vehicle.set_pump(value)`
@@ -485,7 +491,7 @@ In-process stand-in for MAVSDK `Vehicle`. No PX4, no sleep.
 
 Same async surface as `Vehicle`. Records `gotos`, pulse/takeoff/RTL/kill counts. Home is `40, -105`. `distance_sensor_missing=True`. `drone.action.hold` is `_async_noop`.
 
-Each method mirrors `Vehicle` without UDP: `connect` marks connected; `upload_fence` stores the box; `wait_in_air` / `arm_and_takeoff` set `in_air` immediately; `goto_ned` appends NED; `goto_global_agl` appends `(lat, lon, agl_m)`; neither sleeps; `pulse_pump` increments `pulses` and leaves pump at 0; `kill` counts and pump-offs.
+Each method mirrors `Vehicle` without UDP: `connect` marks connected; `upload_fence` stores the box; `wait_in_air` / `arm_and_takeoff` set `in_air` immediately; `goto_ned` appends NED and applies `agl_after_descend_m` when `|down|` ≤ 1 m; `wait_lidar_hover_band` checks the band immediately; `goto_global_agl` appends `(lat, lon, agl_m)`; neither sleeps; `pulse_pump` increments `pulses` and leaves pump at 0; `kill` counts and pump-offs.
 
 ### `async _async_noop(*_a, **_k)`
 

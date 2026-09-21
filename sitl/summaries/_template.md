@@ -38,7 +38,7 @@ Scan is **2.0 m AGL**, not 6–12 in (`px4/offboard.md`).
 
 ## hover_agl_m[]
 
-Spray-hover samples only (`phase == spray_hover`). `t`, `agl_m`, `detection_id`. Source: `DISTANCE_SENSOR` / `distance_sensor.current_distance` (m), downward. **If no distance sensor: `missing` (SIH).** Target 0.15–0.30 m (6–12 in).
+Spray-hover samples only (`phase == spray_hover`). `t`, `agl_m`, `detection_id`. Source: `DISTANCE_SENSOR` / `distance_sensor.current_distance` (m), downward. **If no distance sensor: `missing` (SIH).** Target **0.24–0.32 m** (commanded 0.27 m: gear + ~2 in).
 
 ## pump_pulses[]
 

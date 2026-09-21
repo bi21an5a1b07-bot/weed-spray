@@ -209,13 +209,22 @@ class Mission:
             self.state.pump_off_events.append(event)
 
     async def _visit_confirmed(self) -> None:
-        """XY at 2 m, descend, sample AGL, pulse 0.75 s, climb, next confirmed id."""
+        """Visit confirmed plants: Offboard XY at scan height, lidar hover, pulse.
+
+        Restarts Offboard hold first (confirm gap drops setpoints; PX4 RTL-climbs).
+        ``offboard_agl``: stream_alive, step NED to -1 m then hover, wait lidar
+        in band, then ``goto_global_agl``. SIH ``ned``: NED hover only. Hover
+        AGL proof is DISTANCE_SENSOR, never local ``z``.
+        """
         confirmed_ids = {c.detection_id for c in self.state.confirms if c.decision == "confirm"}
         targets = [d for d in self.state.detections if d.id in confirmed_ids]
         if not targets:
             raise RuntimeError("no confirmed detections")
         down_scan = -settings.scan_agl_m
-        down_hover = -settings.hover_agl_m
+        down_hover = -(settings.hover_agl_m + settings.lidar_mount_down_m)
+        # Confirm gap sends no Offboard setpoints; PX4 times out and RTL-climbs (~30 m).
+        first = targets[0]
+        await self.vehicle.start_offboard_hold(first.north_m, first.east_m, down_scan)
         for det in targets:
             if self.state.phase == MissionPhase.killed:
                 return
@@ -232,14 +241,30 @@ class Mission:
                 telem = self.vehicle.telemetry
                 if telem.lat is None or telem.lon is None:
                     raise RuntimeError("offboard_agl hover needs lat/lon telemetry")
-                # XY at scan height. Do not NED-dive to -0.22 (gz lidar min ~0.10 m).
+                # XY at scan height. NED descend to gear+2 in; lidar (not z) is the
+                # in-band proof. Then AGL setpoint to hold. TERRAIN_ALT alone does
+                # not descend on this gz airframe (issue #19 UAT).
                 if not telem.distance_sensor_stream_alive:
                     raise RuntimeError(
                         "offboard_agl refused: DISTANCE_SENSOR stream not alive "
-                        "(need a scan-height sample with relative_alt before TERRAIN_ALT)"
+                        "(need a scan-height sample with relative_alt before hover)"
                     )
+                # Step down so Gazebo does not slam through the hover band.
+                await self.vehicle.goto_ned(det.north_m, det.east_m, -1.0, settle_s=4.0)
+                await self.vehicle.goto_ned(det.north_m, det.east_m, down_hover, settle_s=8.0)
+                try:
+                    await self.vehicle.wait_lidar_hover_band(
+                        settings.hover_min_m,
+                        settings.hover_max_m,
+                        timeout_s=45.0,
+                        north=det.north_m,
+                        east=det.east_m,
+                        down=down_hover,
+                    )
+                except TimeoutError as exc:
+                    raise RuntimeError(f"offboard_agl refused: {exc}") from exc
                 await self.vehicle.goto_global_agl(
-                    telem.lat, telem.lon, settings.hover_agl_m, settle_s=3.0
+                    telem.lat, telem.lon, settings.hover_agl_m, settle_s=2.0
                 )
                 telem = self.vehicle.telemetry
                 if telem.distance_sensor_missing or telem.distance_sensor_m is None:

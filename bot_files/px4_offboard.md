@@ -26,7 +26,7 @@ Software must not auto-spray. RC in hand whenever motors can spin.
 | 2 | Arm / takeoff: **RC-first or dashboard-first** (operator choice) | climb to scan height, not 6–12 in |
 | 3 | Lawnmower scan. YOLO/injector on the laptop | **2.0 m AGL** (proposed) |
 | 4 | Operator confirms a subset | hold scan height |
-| 5 | Per confirmed: **goto XY at scan height**, then **descend**, hover **0.15–0.30 m**, pulse pump 0.75 s, pump off, next | spray hover only here |
+| 5 | Per confirmed: **goto XY at scan height**, then **descend**, hover **0.24–0.32 m** (commanded 0.27 m), pulse pump 0.75 s, pump off, next | spray hover only here |
 | 6 | RTL / land. Pump off | RTL altitude, not 6–12 in |
 
 Abort: `set_actuator(1, 0)` then RC / `GF_ACTION`. See `actuators.md`.
@@ -38,7 +38,7 @@ Offboard needs ≥ 2 Hz setpoints **before** the mode switch. MAVSDK Offboard re
 
 Position setpoints only (not velocity-only, not direct motors). Copter frames: `MAV_FRAME_LOCAL_NED` or `MAV_FRAME_GLOBAL_*` including `MAV_FRAME_GLOBAL_TERRAIN_ALT_INT`. NED **z is down**.
 
-**6–12 in:** GPS cannot hold it. `MPC_ALT_MODE=2` terrain hold is documented for **Position/Altitude, not Offboard**. Offboard AGL via EKF2 range height or `PositionGlobalYaw.AltitudeType.AGL` is **unproven**. SIH has **no** `DISTANCE_SENSOR` — do not treat local z as AGL. Owner operator (SITL lidar model) / `sitl`.
+**Spray hover (gear + ~2 in / 0.27 m):** GPS cannot hold it. `MPC_ALT_MODE=2` terrain hold is documented for **Position/Altitude, not Offboard**. Offboard AGL via EKF2 range height or `PositionGlobalYaw.AltitudeType.AGL` is **unproven**. SIH has **no** `DISTANCE_SENSOR` — do not treat local z as AGL. Owner operator (SITL lidar model) / `sitl`.
 
 https://docs.px4.io/main/en/flying/terrain_following_holding
 

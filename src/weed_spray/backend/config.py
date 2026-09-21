@@ -15,8 +15,9 @@ class Settings(BaseSettings):
         webrtc_url: MediaMTX WebRTC reader for the dashboard (browsers cannot play RTSP).
         vision_url: Injector base URL.
         http_host / http_port: Backend bind.
-        scan_agl_m: Lawnmower altitude in metres (not 6-12 in).
-        hover_agl_m: Commanded spray hover; NED down = -this when mode is ned.
+        scan_agl_m: Lawnmower altitude in metres (not spray hover).
+        hover_agl_m: Commanded spray hover (S500/gz x500 gear ~0.22 m + ~2 in).
+            NED down = -this when mode is ned.
         hover_altitude_mode: ``ned`` (default SIH) or ``offboard_agl``
             (MAVSDK PositionGlobalYaw.AltitudeType.AGL / PX4
             MAV_FRAME_GLOBAL_TERRAIN_ALT_INT; Gazebo lidar candidate).
@@ -25,7 +26,9 @@ class Settings(BaseSettings):
             cannot fake this; flat Gazebo sets WEED_LIDAR_EXPECTED=1.
         takeoff_timeout_s: Dashboard-first wait for relative_alt ≥ 70% of
             scan height (issue #27). Default 20 s (SIH). Gazebo needs 60-90.
-        hover_min_m / hover_max_m: Accept band for measured AGL.
+        hover_min_m / hover_max_m: Accept band for measured AGL (above gear).
+        lidar_mount_down_m: Belly lidar below CG (gz overlay z=-0.28).
+            NED hover down = -(hover_agl_m + this) so the *lidar* is at hover_agl_m.
         pump_index: MAVSDK 1-based actuator index (Actuator Set 1).
         pump_on / pump_off: Scale [-1, 1]; OFF 0.0 is proposed.
         pump_pulse_s: App sleep around set_actuator, not a PX4 dwell.
@@ -42,12 +45,13 @@ class Settings(BaseSettings):
     http_host: str = "127.0.0.1"
     http_port: int = 8000
     scan_agl_m: float = 2.0
-    hover_agl_m: float = 0.22
+    hover_agl_m: float = 0.27
     hover_altitude_mode: str = "ned"
     lidar_expected: bool = False
     takeoff_timeout_s: float = 20.0
-    hover_min_m: float = 0.15
-    hover_max_m: float = 0.30
+    hover_min_m: float = 0.24
+    hover_max_m: float = 0.32
+    lidar_mount_down_m: float = 0.0
     pump_index: int = 1
     pump_on: float = 1.0
     pump_off: float = 0.0

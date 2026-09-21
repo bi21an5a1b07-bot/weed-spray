@@ -12,7 +12,7 @@ No USB. No serial. No real radio. No real pump.
 
 ## Processes
 
-Prefer the lightest PX4 SITL that can take Offboard. On ~25 GB RAM, Gazebo + YOLO is tight. Default PX4 is **SIH** (`px4io/px4-sitl`, `PX4_SIM_MODEL=sihsim_quadx`). SIH has IMU/GPS/baro/mag, not lidar or optical flow ([comparison](https://docs.px4.io/main/en/simulation/#simulator-comparison)). Hover AGL in this loop is therefore a **backend-recorded** number (commanded 0.15–0.30 m hold). `@logs` will mark rangefinder `missing` unless Grok Build later adds Gazebo `gz_x500_lidar_down` ([rangefinders](https://docs.px4.io/main/en/sensor/rangefinders)).
+Prefer the lightest PX4 SITL that can take Offboard. On ~25 GB RAM, Gazebo + YOLO is tight. Default PX4 is **SIH** (`px4io/px4-sitl`, `PX4_SIM_MODEL=sihsim_quadx`). SIH has IMU/GPS/baro/mag, not lidar or optical flow ([comparison](https://docs.px4.io/main/en/simulation/#simulator-comparison)). Hover AGL in this loop is therefore a **backend-recorded** number (commanded **0.27 m**, band 0.24–0.32 m: S500/gz x500 gear ~0.22 m + ~2 in). `@logs` will mark rangefinder `missing` unless Grok Build later adds Gazebo `gz_x500_lidar_down` ([rangefinders](https://docs.px4.io/main/en/sensor/rangefinders)).
 
 | # | Process | Where | Image / binary | Role |
 |---|---|---|---|---|
@@ -62,7 +62,7 @@ Fill `/workspace/weed-spray/sitl/last-run.md` with these rows. `pass` / `fail` /
 | 4 inject or detect boxes | Inject `dandelion` / `clover` / `thistle` / `mallow` with ids (`@weeds`: no trained YOLO yet). Live YOLO on the mock RTSP file is optional. | ≥1 detection with `id`, `class`, position. Fake boxes are a pass. |
 | 5 confirm subset | Human (or harness acting as human) confirms a **subset**. Unconfirmed must not spray. | `confirms[]` exist. No pulse for unconfirmed ids. |
 | 6 visit | Offboard goto XY at **scan height**, then descend. Do not dive to 6–12 in while translating. | Each confirmed id visited, none of the rejected. |
-| 7 6–12 in hover | Hold 0.15–0.30 m AGL at the target. Record `hover_agl_m[]`. | Samples written. If no `distance_sensor`, write `missing` and **fail this step** (SIH has no lidar). Commanded hold still required. |
+| 7 spray hover | Hold **0.24–0.32 m** AGL at the target (commanded 0.27 m, gear + ~2 in). Record `hover_agl_m[]`. | Samples written. If no `distance_sensor`, write `missing` and **fail this step** (SIH has no lidar). Commanded hold still required. |
 | 8 0.75 s pump pulse | One MAVLink actuator pulse per confirmed visit. | `pump_pulses[].duration_s` ≈ 0.75. Count = confirmed visits. Extra pulse = fail. |
 | 9 RTL | RTL / land after the last confirmed target (or on operator RTL). | Vehicle RTLs. Pump off during RTL. |
 | 10 pump-off on kill | Trigger kill: dashboard kill, or simulated RC loss / disconnect / fence exit. | Pump commanded off. `pump_off_events[]` or failsafe row with `pump_commanded_off=true`. **Required.** |

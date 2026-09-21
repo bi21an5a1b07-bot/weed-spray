@@ -22,9 +22,10 @@ def _agl_settings(**kwargs) -> Settings:
     base = dict(
         hover_altitude_mode="offboard_agl",
         lidar_expected=True,
-        hover_agl_m=0.22,
-        hover_min_m=0.15,
-        hover_max_m=0.30,
+        hover_agl_m=0.27,
+        hover_min_m=0.24,
+        hover_max_m=0.32,
+        lidar_mount_down_m=0.0,
         scan_agl_m=2.0,
     )
     base.update(kwargs)
@@ -59,8 +60,8 @@ def test_lagging_relative_alt_does_not_unlock_stream_alive():
 @pytest.mark.asyncio
 async def test_goto_global_agl_records_lat_lon_agl():
     v = FakeVehicle()
-    await v.goto_global_agl(40.1, -105.2, 0.22, settle_s=0.0)
-    assert v.goto_agls == [(40.1, -105.2, 0.22)]
+    await v.goto_global_agl(40.1, -105.2, 0.27, settle_s=0.0)
+    assert v.goto_agls == [(40.1, -105.2, 0.27)]
 
 
 @pytest.mark.asyncio
@@ -73,12 +74,15 @@ async def test_visit_offboard_agl_happy_path_via_apply_sample(monkeypatch):
     v._telem.lon = -105.01
     apply_distance_sample(v._telem, 2.05, relative_alt_m=1.98)
     assert v._telem.distance_sensor_stream_alive is True
-    v.agl_after_descend_m = 0.22
+    v.agl_after_descend_m = 0.27
     m = _mission(v)
     await m._visit_confirmed()
-    assert v.goto_agls[-1] == (40.01, -105.01, 0.22)
+    assert v.goto_agls[-1] == (40.01, -105.01, 0.27)
     assert any(abs(g[2] - (-2.0)) < 1e-9 for g in v.gotos)
-    assert not any(abs(g[2] - (-0.22)) < 1e-9 for g in v.gotos)
+    # NED descend to gear+2in, then AGL hold. Lidar sample (not z) is the proof.
+    assert any(abs(g[2] - (-0.27)) < 1e-9 for g in v.gotos)
+    assert any(abs(g[2] - (-1.0)) < 1e-9 for g in v.gotos)
+    assert v.offboard_holds >= 1
     assert v.pulses == 1
 
 
@@ -86,14 +90,14 @@ async def test_visit_offboard_agl_happy_path_via_apply_sample(monkeypatch):
 async def test_visit_default_ned_does_not_call_agl(monkeypatch):
     monkeypatch.setattr(
         "weed_spray.backend.mission.settings",
-        Settings(hover_altitude_mode="ned", hover_agl_m=0.22, scan_agl_m=2.0),
+        Settings(hover_altitude_mode="ned", hover_agl_m=0.27, scan_agl_m=2.0),
     )
     v = FakeVehicle()
     v.connected = True
     m = _mission(v)
     await m._visit_confirmed()
     assert v.goto_agls == []
-    assert any(abs(g[2] - (-0.22)) < 1e-9 for g in v.gotos)
+    assert any(abs(g[2] - (-0.27)) < 1e-9 for g in v.gotos)
 
 
 @pytest.mark.asyncio
@@ -108,7 +112,7 @@ async def test_offboard_agl_refuses_without_lidar_expected(monkeypatch):
     v._telem.lat = 40.01
     v._telem.lon = -105.01
     apply_distance_sample(v._telem, 2.05, relative_alt_m=1.98)
-    v.agl_after_descend_m = 0.22
+    v.agl_after_descend_m = 0.27
     m = _mission(v)
     with pytest.raises(RuntimeError, match="LIDAR_EXPECTED"):
         await m._visit_confirmed()
@@ -124,7 +128,7 @@ async def test_offboard_agl_refuses_when_stream_dead(monkeypatch):
     v._telem.lat = 40.01
     v._telem.lon = -105.01
     v._telem.distance_sensor_stream_alive = False
-    v.agl_after_descend_m = 0.22
+    v.agl_after_descend_m = 0.27
     m = _mission(v)
     with pytest.raises(RuntimeError, match="stream"):
         await m._visit_confirmed()
@@ -142,9 +146,9 @@ async def test_offboard_agl_refuses_when_missing_after_descend(monkeypatch):
     apply_distance_sample(v._telem, 2.05, relative_alt_m=1.98)
     v.agl_after_descend_m = None
     m = _mission(v)
-    with pytest.raises(RuntimeError, match="trusted hover AGL"):
+    with pytest.raises(RuntimeError, match="not in band"):
         await m._visit_confirmed()
-    assert v.goto_agls[-1] == (40.01, -105.01, 0.22)
+    assert v.goto_agls == []
     assert v.pulses == 0
 
 
@@ -160,5 +164,5 @@ async def test_offboard_agl_refuses_pulse_when_out_of_band(monkeypatch):
     m = _mission(v)
     with pytest.raises(RuntimeError, match="band"):
         await m._visit_confirmed()
-    assert v.goto_agls[-1] == (40.01, -105.01, 0.22)
+    assert v.goto_agls == []
     assert v.pulses == 0

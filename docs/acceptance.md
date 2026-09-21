@@ -73,7 +73,7 @@ make accept
 
 The script prints the markdown table and writes `--out` (default `var/last-run.md`).
 
-**Default SIH stack:** expect exit code `1`. Step 7 fails (hover samples `missing` — no usable short-range lidar; SIH may emit bogus `DISTANCE_SENSOR` readings **≥ 1 m** that the backend drops); steps 8–9 are then `blocked`. That is a correct SIH run, not a setup failure. Exit `0` only when every step passes (needs real rangefinder in the 0.15–0.30 m band — not default compose).
+**Default SIH stack:** expect exit code `1`. Step 7 fails (hover samples `missing` — no usable short-range lidar; SIH may emit bogus `DISTANCE_SENSOR` readings **≥ 1 m** that the backend drops); steps 8–9 are then `blocked`. That is a correct SIH run, not a setup failure. Exit `0` only when every step passes (needs real rangefinder in the 0.24–0.32 m band — not default compose).
 
 ## The 10 steps (what the harness does)
 
@@ -87,7 +87,7 @@ Source of truth for pass criteria: `bot_files/sitl_loop.md`. Implementation: `sr
 | 4 inject or detect | `POST /detections/inject` w1 dandelion, w2 clover, w3 thistle | ≥1 detection (fake boxes OK) |
 | 5 confirm subset | `POST /confirm` `{ids: ["w1"]}` only | Confirmed = w1; w2/w3 not confirmed |
 | 6 visit | `POST /visit`; wait for rtl/killed/error | w1 visited; w2 not visited |
-| 7 6–12 in hover | Read `hover_agl_m[]` | Samples in 0.15–0.30 m and **not** `missing` |
+| 7 spray hover | Read `hover_agl_m[]` | Samples in 0.24–0.32 m and **not** `missing` |
 | 8 0.75 s pump pulse | Read `pump_pulses[]` | Exactly one pulse; duration ≈ 0.75 s |
 | 9 RTL | Phase after visit | `rtl` or `killed` |
 | 10 pump-off on kill | `POST /kill` | `pump_commanded_off` (still runs if vehicle armed after an earlier fail) |
@@ -98,7 +98,7 @@ First fail stops further grading (`blocked`). Step 10 still runs if the vehicle 
 
 ## Expected SIH result
 
-Default PX4 SIH still expects an honest fail on hover AGL. SIH may publish a bogus `DISTANCE_SENSOR` (often tracking GPS / relative alt, e.g. ~12 m); the backend treats readings **≥ 1 m** as `missing` (`distance_reading_m` / room-agreed #14 tip). Real spray-hover lidar ~0.15–0.30 m is kept. On the default `make sitl` path:
+Default PX4 SIH still expects an honest fail on hover AGL. SIH may publish a bogus `DISTANCE_SENSOR` (often tracking GPS / relative alt, e.g. ~12 m); the backend treats readings **≥ 1 m** as `missing` (`distance_reading_m` / room-agreed #14 tip). Real spray-hover lidar ~0.24–0.32 m is kept. On the default `make sitl` path:
 
 | | Expected |
 |---|---|
@@ -109,7 +109,7 @@ Default PX4 SIH still expects an honest fail on hover AGL. SIH may publish a bog
 
 Do not treat GPS / `vehicle_local_position.z` as AGL. Do not invent rangefinder PX4 params to fake a green table. "Good enough for SIH" = processes up + steps 1–6 and 10 behaving as above + honest step 7 fail — **not** `make accept` exit `0`.
 
-Exit `0` only with a real rangefinder in the 0.15–0.30 m band (hardware, or Gazebo once Offboard lidar-hold lands on #19). Opt-in `make sitl-gz` now has vehicle cam on `8554/cam` but still does **not** deliver full-green / exit `0`. Default compose remains SIH.
+Exit `0` only with a real rangefinder in the 0.24–0.32 m band (hardware, or Gazebo once Offboard lidar-hold lands on #19). Opt-in `make sitl-gz` now has vehicle cam on `8554/cam` but still does **not** deliver full-green / exit `0`. Default compose remains SIH.
 
 ## After the run
 
