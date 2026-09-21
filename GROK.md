@@ -24,10 +24,12 @@ Python 3.11 + TypeScript dashboard, tools via [mise](https://mise.jdx.dev/walkth
 - Treat `GET /preflight` or SITL as FAA/Part 137 authorization. Not legal advice.
 - Catch-and-pass around pump-off without logging.
 - Add production behavior without a **failing test written first** (no implement-then-backfill). Live `make accept` is not that test.
+- Ship a new or changed function, method, or class without a **function-level docstring** (purpose, args, return, non-obvious constraints). Comments are not a substitute.
 
 **Always**
 
 - **Test-driven development** on every code change: (1) write a pytest that fails for the right reason, (2) write the minimum code to pass, (3) refactor, (4) `make check`. Python tests use `FakeVehicle` — **no live PX4**. Do not skip this because the change is “just a hover number” or because SITL UAT will come later.
+- **Function-level documentation** on every new or changed code unit. Python: Google-style docstrings (module, class, public and non-trivial private functions) matching `src/weed_spray/backend/`. Update [`docs/code-reference.md`](docs/code-reference.md) when a public API, CLI, or setting changes. Do not leave “what this does” only in the commit message.
 - Pump: `set_actuator(1)`, ON=1, OFF=0, 0.75 s app pulse, `finally` off. Off on kill, RC loss, Offboard loss, RTL, people/pets hold, shutdown.
 - Scan at **2.0 m AGL**. Per confirmed id: XY at scan height, **then** descend to **0.24-0.32 m** (commanded **0.27 m**, gear + ~2 in), pulse, climb, next.
 - Offboard: bind `udpin://0.0.0.0:14540`. Setpoint **before** `offboard.start()`. NED z is down (`hover` down = `-0.27`).
