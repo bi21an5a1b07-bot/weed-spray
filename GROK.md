@@ -6,7 +6,7 @@ Product spec: [`agent_prompts/_shared/PROJECT.md`](agent_prompts/_shared/PROJECT
 
 ## What this repo is
 
-Laptop ground station for a US-hobby backyard quad. PX4 over MAVLink. Scan the lawn, human confirms weeds, then hover 6-12 in AGL and pulse a 12 V vinegar/salt pump. **SITL first** (Docker SIH on this WSL box). Hardware later.
+Laptop ground station for a US-hobby backyard quad. PX4 over MAVLink. Scan the lawn, human confirms weeds, then hover ~0.27 m AGL (S500/gz x500 gear ~0.22 m + ~2 in) and pulse a 12 V vinegar/salt pump. **SITL first** (Docker SIH on this WSL box). Hardware later.
 
 Python 3.11 + TypeScript dashboard, tools via [mise](https://mise.jdx.dev/walkthrough.html). **No ROS. No cloud in the inner loop.** Localhost/LAN only.
 
@@ -23,12 +23,16 @@ Python 3.11 + TypeScript dashboard, tools via [mise](https://mise.jdx.dev/walkth
 - Drop TFmini-S or PMW3901 to hit the $500 cap. Report the dollar gap (`bot_files/parts_cap.md`, ~$815).
 - Treat `GET /preflight` or SITL as FAA/Part 137 authorization. Not legal advice.
 - Catch-and-pass around pump-off without logging.
+- Add production behavior without a **failing test written first** (no implement-then-backfill). Live `make accept` is not that test.
+- Ship a new or changed function, method, or class without a **function-level docstring** (purpose, args, return, non-obvious constraints). Comments are not a substitute.
 
 **Always**
 
+- **Test-driven development** on every code change: (1) write a pytest that fails for the right reason, (2) write the minimum code to pass, (3) refactor, (4) `make check`. Python tests use `FakeVehicle` — **no live PX4**. Do not skip this because the change is “just a hover number” or because SITL UAT will come later.
+- **Function-level documentation** on every new or changed code unit. Python: Google-style docstrings (module, class, public and non-trivial private functions) matching `src/weed_spray/backend/`. Update [`docs/code-reference.md`](docs/code-reference.md) when a public API, CLI, or setting changes. Do not leave “what this does” only in the commit message.
 - Pump: `set_actuator(1)`, ON=1, OFF=0, 0.75 s app pulse, `finally` off. Off on kill, RC loss, Offboard loss, RTL, people/pets hold, shutdown.
-- Scan at **2.0 m AGL**. Per confirmed id: XY at scan height, **then** descend to 0.15-0.30 m, pulse, climb, next.
-- Offboard: bind `udpin://0.0.0.0:14540`. Setpoint **before** `offboard.start()`. NED z is down (`hover` down = `-0.22`).
+- Scan at **2.0 m AGL**. Per confirmed id: XY at scan height, **then** descend to **0.24-0.32 m** (commanded **0.27 m**, gear + ~2 in), pulse, climb, next.
+- Offboard: bind `udpin://0.0.0.0:14540`. Setpoint **before** `offboard.start()`. NED z is down (`hover` down = `-0.27`).
 - RC in the pilot's hands whenever motors can spin (hardware). SITL may be dashboard-first.
 - Cite `bot_files/` when changing flight, pump, class map, or accept behavior.
 - Install host language tools with **mise** (`mise.toml`). Do not brew/nvm/apt a second Python or Node for this repo.
@@ -100,7 +104,7 @@ make accept               # live loop.md grade (needs SITL + apps)
 mise run accept           # same
 ```
 
-Python gate after every Python edit:
+Python gate after every Python edit. **TDD order is mandatory:** failing pytest first (run it; see red), then implementation (see green), then:
 
 ```bash
 uv run ruff check --fix src tests

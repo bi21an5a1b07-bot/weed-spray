@@ -74,6 +74,23 @@ class FakeVehicle:
         if abs(down) <= 1.0:
             self._apply_descend_reading()
 
+    async def wait_lidar_hover_band(
+        self,
+        min_m: float,
+        max_m: float,
+        timeout_s: float = 15.0,
+        north: float | None = None,
+        east: float | None = None,
+        down: float | None = None,
+    ) -> float:
+        """Immediate band check (no PX4 sleep). Raises ``TimeoutError`` if out of band."""
+        _ = timeout_s, north, east, down
+        telem = self.telemetry
+        ds = telem.distance_sensor_m
+        if ds is None or telem.distance_sensor_missing or not (min_m <= ds <= max_m):
+            raise TimeoutError(f"hover AGL not in band ({ds})")
+        return ds
+
     async def goto_global_agl(
         self, lat_deg: float, lon_deg: float, agl_m: float, settle_s: float = 0.0
     ) -> None:

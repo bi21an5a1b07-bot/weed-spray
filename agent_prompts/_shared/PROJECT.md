@@ -26,7 +26,7 @@ Laptop ground station talks to a backyard quad over MAVLink (PX4). A camera on t
 3. Drone lawnmower-scans the box
 4. Laptop records detections (classes: `dandelion`, `clover`, `thistle`, `mallow`)
 5. Operator confirms a subset
-6. Drone visits each confirmed target, lidar-hold 6–12 in AGL, pulse pump, next
+6. Drone visits each confirmed target, lidar-hold **0.27 m AGL** (landing gear ~0.22 m + ~2 in; band 0.24–0.32 m), pulse pump, next
 7. RTL / land. Pump off on any failsafe, disconnect, or geofence breach
 8. RC transmitter in the pilot’s hands whenever motors can spin
 

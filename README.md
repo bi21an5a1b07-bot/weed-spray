@@ -2,7 +2,7 @@
 
 ## Proof of concept / vibe code solution.  Do not trust it.
 
-Laptop ground station for a US-hobby backyard PX4 quad. The drone lawnmower-scans a typed geofence, the operator confirms weeds on a localhost dashboard, then the vehicle visits each confirmed plant, holds 6–12 inches AGL, and pulses a 12 V household vinegar/salt pump.
+Laptop ground station for a US-hobby backyard PX4 quad. The drone lawnmower-scans a typed geofence, the operator confirms weeds on a localhost dashboard, then the vehicle visits each confirmed plant, holds **~0.27 m AGL** (landing gear ~0.22 m + ~2 in), and pulses a 12 V household vinegar/salt pump.
 
 **SITL first.** Hardware comes later. There is no ROS and no cloud in the inner loop.
 
@@ -22,11 +22,11 @@ Product spec: [`agent_prompts/_shared/PROJECT.md`](agent_prompts/_shared/PROJECT
 |---|---|---|
 | Flight loop | SITL Offboard scan → confirm → visit → RTL | Real Kakute + Pi 4 USB CDC |
 | Detections | Injected boxes (`weed-spray-vision`) | Live YOLO on RTSP after labeled `weeds/dataset/` |
-| Hover AGL | Commanded 0.15–0.30 m; SIH has **no lidar** | TFmini-S `DISTANCE_SENSOR` (Gazebo profile is not v1) |
+| Hover AGL | Commanded **0.27 m** (0.24–0.32 m band); SIH has **no lidar** | TFmini-S `DISTANCE_SENSOR` (Gazebo profile is not v1) |
 | Camera | Looped `media/*.mp4` on `rtsp://127.0.0.1:8554/cam` | Pi WiFi RTSP, same URL |
 | BOM | ~$815 all-in vs a $500 cap; TFmini-S and PMW3901 stay | Do not drop rangefinder or flow to close the gap |
 
-Accept step 7 (measured 6–12 in hover) **fails on SIH** unless a rangefinder is present. Do not treat GPS or `vehicle_local_position.z` as AGL.
+Accept step 7 (measured spray hover 0.24–0.32 m) **fails on SIH** unless a rangefinder is present. Do not treat GPS or `vehicle_local_position.z` as AGL.
 
 ## Safety
 
@@ -104,7 +104,7 @@ Nothing in the app leaves localhost.
 
 Compose starts **only** PX4, MediaMTX, and the ffmpeg publisher. Backend, vision, and dashboard stay on the host. Images are pinned in `compose.yaml`; do not add more at runtime.
 
-Scan at 2.0 m, then per confirmed id: goto XY at scan height, **then** descend to 0.15–0.30 m, pulse, climb, next. NED **z is down** (`hover` down = `-0.22`). That commanded hold is not measured AGL on SIH.
+Scan at 2.0 m, then per confirmed id: goto XY at scan height, **then** descend to **0.24–0.32 m** (commanded 0.27 m), pulse, climb, next. NED **z is down** (`hover` down = `-0.27`). That commanded hold is not measured AGL on SIH.
 
 ## Vision
 

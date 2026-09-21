@@ -75,3 +75,16 @@ def test_makefile_start_targets_tear_other_profile_first():
     body_sitl = text[idx_sitl:idx_sitl_down]
     assert "sitl-gz-down" in body_sitl
     assert "weed-spray-sih" in body_sitl and "up" in body_sitl
+
+
+def test_makefile_backend_gz_sets_lidar_mount():
+    """Gazebo belly lidar is z=-0.28 under CG — backend-gz must export mount (BugScout #32)."""
+    text = (REPO / "Makefile").read_text()
+    idx = text.index("backend-gz:")
+    # body until next recipe that starts at column 0
+    rest = text[idx:]
+    next_recipe = rest.find("\n\n")
+    body = rest[: next_recipe if next_recipe > 0 else len(rest)]
+    assert "WEED_LIDAR_MOUNT_DOWN_M=0.28" in body
+    assert "WEED_HOVER_ALTITUDE_MODE=offboard_agl" in body
+    assert "WEED_LIDAR_EXPECTED=true" in body

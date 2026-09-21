@@ -12,6 +12,8 @@ from pathlib import Path
 
 import httpx
 
+from weed_spray.backend.config import settings
+
 BACKEND = "http://127.0.0.1:8000"
 VISION = "http://127.0.0.1:8090"
 RTSP_HOST, RTSP_PORT = "127.0.0.1", 8554
@@ -22,7 +24,7 @@ STEPS = [
     "4 inject or detect boxes",
     "5 confirm subset",
     "6 visit",
-    "7 6-12 in hover",
+    "7 spray hover",
     "8 0.75 s pump pulse",
     "9 RTL",
     "10 pump-off on kill",
@@ -187,7 +189,9 @@ def main(argv: list[str] | None = None) -> int:
                 has_missing = True
             elif isinstance(x, (int, float)):
                 numeric.append(float(x))
-        in_band = bool(numeric) and all(0.15 <= v <= 0.30 for v in numeric)
+        in_band = bool(numeric) and all(
+            settings.hover_min_m <= v <= settings.hover_max_m for v in numeric
+        )
         grade(
             STEPS[6],
             bool(in_band) and not has_missing,

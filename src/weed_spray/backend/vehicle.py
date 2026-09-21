@@ -65,7 +65,7 @@ def distance_reading_m(
     """Parse trusted short-range lidar metres. NaN / non-positive / missing → None.
 
     This project only trusts short-range downward lidar for spray hover
-    (about 0.15-0.30 m). Readings at or above ``max_trust_m`` (default 1 m)
+    (about 0.24-0.32 m). Readings at or above ``max_trust_m`` (default 1 m)
     are treated as missing so SIH bogus streams (often ~relative alt, or a
     high value while commanded low) cannot pretend to be AGL (issue #12).
 
@@ -307,6 +307,45 @@ class Vehicle:
         """Command Offboard position. ``down`` is NED z (positive down). Sleeps ``settle_s``."""
         await self.drone.offboard.set_position_ned(PositionNedYaw(north, east, down, 0.0))
         await asyncio.sleep(settle_s)
+
+    async def wait_lidar_hover_band(
+        self,
+        min_m: float,
+        max_m: float,
+        timeout_s: float = 15.0,
+        north: float | None = None,
+        east: float | None = None,
+        down: float | None = None,
+    ) -> float:
+        """Poll trusted DISTANCE_SENSOR until it is in ``[min_m, max_m]``.
+
+        Proof is lidar, not local ``z`` / relative_alt. Timeout does not invent AGL.
+        Optional NED is re-sent so Offboard keeps the descend setpoint.
+
+        Args:
+            min_m: Inclusive lower accept band (metres AGL).
+            max_m: Inclusive upper accept band (metres AGL).
+            timeout_s: Wall-clock deadline.
+            north, east, down: If all set, re-send this Offboard NED each poll.
+
+        Returns:
+            The in-band lidar metres.
+
+        Raises:
+            TimeoutError: Deadline hit; message includes last lidar and relative_alt.
+        """
+        deadline = asyncio.get_event_loop().time() + timeout_s
+        last: float | None = None
+        while asyncio.get_event_loop().time() < deadline:
+            if north is not None and east is not None and down is not None:
+                await self.drone.offboard.set_position_ned(PositionNedYaw(north, east, down, 0.0))
+            telem = self.telemetry
+            last = telem.distance_sensor_m
+            if last is not None and not telem.distance_sensor_missing and min_m <= last <= max_m:
+                return last
+            await asyncio.sleep(0.25)
+        rel = self.telemetry.relative_alt_m
+        raise TimeoutError(f"hover AGL not in band (lidar={last} rel={rel})")
 
     async def goto_global_agl(
         self, lat_deg: float, lon_deg: float, agl_m: float, settle_s: float = 2.0

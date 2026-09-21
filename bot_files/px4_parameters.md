@@ -62,4 +62,4 @@ PWM ESCs on M1–M4 (not DShot): https://docs.px4.io/main/en/config/actuators
 2. DIS/FAIL µs for IRLZ44N — owner `hardware`.  
 3. `set_actuator(1, 0)` vs `-1` — owner operator (SITL) then `hardware`.  
 4. 12 V rail is a second Matek BEC (`parts`). 4S empty sag vs 14 V dropout — owner `hardware`.  
-5. Offboard AGL at 0.15–0.30 m — owner operator; SIH will fail that step without `DISTANCE_SENSOR`.
+5. Offboard AGL at 0.24–0.32 m (commanded 0.27 m) — owner operator; SIH will fail that step without `DISTANCE_SENSOR`.
