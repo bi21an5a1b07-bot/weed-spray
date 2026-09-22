@@ -22,6 +22,26 @@ FailsafeHandler = Callable[[str], Awaitable[None]]
 log = logging.getLogger("weed_spray.vehicle")
 
 
+def ned_down_for_lidar_band(
+    current_down: float, lidar_m: float, min_m: float, max_m: float
+) -> float:
+    """Shift NED ``down`` so lidar AGL moves toward the midpoint of ``[min_m, max_m]``.
+
+    NED z is positive down. If lidar is too high (too many metres AGL), increase
+    ``down`` (descend). If too low, decrease ``down`` (climb). Does not invent AGL.
+
+    Args:
+        current_down: Current Offboard NED down (negative = above origin).
+        lidar_m: Trusted DISTANCE_SENSOR metres.
+        min_m / max_m: Inclusive accept band.
+
+    Returns:
+        New NED down command.
+    """
+    target = (min_m + max_m) / 2.0
+    return current_down + (lidar_m - target)
+
+
 def _parse_distance_m(current: object) -> float | None:
     """Float metres or None for NaN / non-positive / junk."""
     if current is None:
@@ -343,6 +363,14 @@ class Vehicle:
             last = telem.distance_sensor_m
             if last is not None and not telem.distance_sensor_missing and min_m <= last <= max_m:
                 return last
+            if (
+                last is not None
+                and not telem.distance_sensor_missing
+                and down is not None
+                and north is not None
+                and east is not None
+            ):
+                down = ned_down_for_lidar_band(down, last, min_m, max_m)
             await asyncio.sleep(0.25)
         rel = self.telemetry.relative_alt_m
         raise TimeoutError(f"hover AGL not in band (lidar={last} rel={rel})")

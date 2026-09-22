@@ -78,13 +78,12 @@ def test_makefile_start_targets_tear_other_profile_first():
 
 
 def test_makefile_backend_gz_sets_lidar_mount():
-    """Gazebo belly lidar is z=-0.28 under CG — backend-gz must export mount (BugScout #32)."""
+    """gz lidar tracks NED 1:1 — do not add 0.28 m mount or hover sits at 0.55 m (#33)."""
     text = (REPO / "Makefile").read_text()
     idx = text.index("backend-gz:")
-    # body until next recipe that starts at column 0
     rest = text[idx:]
     next_recipe = rest.find("\n\n")
     body = rest[: next_recipe if next_recipe > 0 else len(rest)]
-    assert "WEED_LIDAR_MOUNT_DOWN_M=0.28" in body
+    assert "WEED_LIDAR_MOUNT_DOWN_M=0.28" not in body
     assert "WEED_HOVER_ALTITUDE_MODE=offboard_agl" in body
     assert "WEED_LIDAR_EXPECTED=true" in body

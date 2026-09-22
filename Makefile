@@ -31,8 +31,7 @@ backend:
 # Gazebo accurate profile (issue #19 / #27). Do not use on SIH.
 backend-gz:
 	WEED_HOVER_ALTITUDE_MODE=offboard_agl WEED_LIDAR_EXPECTED=true \
-		WEED_LIDAR_MOUNT_DOWN_M=0.28 WEED_TAKEOFF_TIMEOUT_S=90 \
-		uv run weed-spray
+		WEED_TAKEOFF_TIMEOUT_S=90 uv run weed-spray
 
 vision:
 	uv run weed-spray-vision

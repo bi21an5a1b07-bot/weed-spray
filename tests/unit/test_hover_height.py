@@ -15,6 +15,31 @@ def test_commanded_hover_is_gear_plus_two_inches():
     assert s.hover_agl_m == 0.27
 
 
+def test_backend_gz_does_not_double_count_lidar_mount():
+    """gz lidar tracks NED 1:1; Makefile must not add WEED_LIDAR_MOUNT_DOWN_M=0.28 (#33)."""
+    from pathlib import Path
+
+    text = Path(__file__).resolve().parents[2].joinpath("Makefile").read_text()
+    assert "WEED_LIDAR_MOUNT_DOWN_M=0.28" not in text
+
+
+def test_ned_down_for_lidar_band_descends_when_too_high():
+    """Lidar 0.55 m with NED -0.55 must nudge toward the 0.24-0.32 m band (#33)."""
+    from weed_spray.backend.vehicle import ned_down_for_lidar_band
+
+    down = ned_down_for_lidar_band(-0.55, 0.55, 0.24, 0.32)
+    assert 0.24 <= abs(down) <= 0.32
+
+
+def test_ned_down_for_lidar_band_climbs_when_too_low():
+    """Lidar 0.19 m with NED -0.27 must climb toward the band (#33)."""
+    from weed_spray.backend.vehicle import ned_down_for_lidar_band
+
+    down = ned_down_for_lidar_band(-0.27, 0.19, 0.24, 0.32)
+    assert abs(down) >= 0.24
+    assert abs(down) <= 0.40
+
+
 def test_ned_hover_accounts_for_lidar_mount_below_cg():
     """NED down is -(hover_agl_m + lidar_mount_down_m) so lidar, not CG, is at hover."""
     s = Settings(hover_agl_m=0.27, lidar_mount_down_m=0.28)

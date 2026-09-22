@@ -181,6 +181,10 @@ Dashboard-first: set takeoff altitude, arm, takeoff, wait until relative alt ≥
 
 Send one NED setpoint then `offboard.start()`. MAVSDK keeps ≥ 2 Hz. One retry on `OffboardError`.
 
+#### `ned_down_for_lidar_band(current_down, lidar_m, min_m, max_m) -> float`
+
+Pure helper (#33): shift NED `down` toward the midpoint of `[min_m, max_m]` using **lidar** metres (not local `z`). Too-high lidar → more positive down (descend); too-low → climb.
+
 #### `async Vehicle.goto_ned(north, east, down, settle_s=2.0)`
 
 Offboard position. `down` is NED z (positive down). Sleeps `settle_s` (FakeVehicle does not sleep).
