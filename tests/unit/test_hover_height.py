@@ -1,5 +1,7 @@
 """Spray hover sits above S500 / gz x500 landing gear (TDD)."""
 
+import pytest
+
 from weed_spray.backend.config import Settings
 
 # gz x500_base skid collision z=-0.2195 m; S500 CF gear is the same class.
@@ -54,3 +56,30 @@ def test_accept_band_stays_above_landing_gear():
     assert s.hover_min_m <= s.hover_agl_m <= s.hover_max_m
     assert s.hover_min_m == 0.24
     assert s.hover_max_m == 0.32
+
+
+def test_stuck_lidar_does_not_restack_ned_nudge():
+    """Same out-of-band lidar must not re-apply full error every poll (BugScout #34)."""
+    from weed_spray.backend.vehicle import ned_down_for_lidar_band, should_nudge_for_lidar_band
+
+    down = -0.55
+    last_nudged: float | None = None
+    downs: list[float] = []
+    for _ in range(4):
+        lidar = 0.55
+        if should_nudge_for_lidar_band(lidar, 0.24, 0.32, last_nudged):
+            down = ned_down_for_lidar_band(down, lidar, 0.24, 0.32)
+            last_nudged = lidar
+        downs.append(down)
+    assert downs[0] == pytest.approx(-0.28)
+    assert downs == [downs[0]] * 4
+
+
+def test_lidar_change_allows_another_nudge():
+    """A new lidar reading may nudge again; unchanged reading must not."""
+    from weed_spray.backend.vehicle import should_nudge_for_lidar_band
+
+    assert should_nudge_for_lidar_band(0.55, 0.24, 0.32, None) is True
+    assert should_nudge_for_lidar_band(0.55, 0.24, 0.32, 0.55) is False
+    assert should_nudge_for_lidar_band(0.40, 0.24, 0.32, 0.55) is True
+    assert should_nudge_for_lidar_band(0.28, 0.24, 0.32, 0.55) is False

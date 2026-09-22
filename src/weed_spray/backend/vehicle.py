@@ -42,6 +42,27 @@ def ned_down_for_lidar_band(
     return current_down + (lidar_m - target)
 
 
+def should_nudge_for_lidar_band(
+    lidar_m: float,
+    min_m: float,
+    max_m: float,
+    last_nudged_lidar_m: float | None,
+    *,
+    change_eps_m: float = 0.02,
+) -> bool:
+    """Whether to apply ``ned_down_for_lidar_band`` for this poll.
+
+    Re-applying the full lidar error every 0.25 s while DISTANCE_SENSOR is
+    stuck walks Offboard NED through the band into the ground/sky (BugScout
+    #34). Nudge only when out of band and lidar is new (or first nudge).
+    """
+    if min_m <= lidar_m <= max_m:
+        return False
+    if last_nudged_lidar_m is None:
+        return True
+    return abs(lidar_m - last_nudged_lidar_m) > change_eps_m
+
+
 def _parse_distance_m(current: object) -> float | None:
     """Float metres or None for NaN / non-positive / junk."""
     if current is None:
@@ -341,6 +362,8 @@ class Vehicle:
 
         Proof is lidar, not local ``z`` / relative_alt. Timeout does not invent AGL.
         Optional NED is re-sent so Offboard keeps the descend setpoint.
+        Lidar-error NED nudges run at most once per distinct out-of-band
+        reading (stuck lidar must not stack full error every poll).
 
         Args:
             min_m: Inclusive lower accept band (metres AGL).
@@ -356,6 +379,7 @@ class Vehicle:
         """
         deadline = asyncio.get_event_loop().time() + timeout_s
         last: float | None = None
+        last_nudged_lidar: float | None = None
         while asyncio.get_event_loop().time() < deadline:
             if north is not None and east is not None and down is not None:
                 await self.drone.offboard.set_position_ned(PositionNedYaw(north, east, down, 0.0))
@@ -369,8 +393,10 @@ class Vehicle:
                 and down is not None
                 and north is not None
                 and east is not None
+                and should_nudge_for_lidar_band(last, min_m, max_m, last_nudged_lidar)
             ):
                 down = ned_down_for_lidar_band(down, last, min_m, max_m)
+                last_nudged_lidar = last
             await asyncio.sleep(0.25)
         rel = self.telemetry.relative_alt_m
         raise TimeoutError(f"hover AGL not in band (lidar={last} rel={rel})")
