@@ -22,6 +22,48 @@ FailsafeHandler = Callable[[str], Awaitable[None]]
 log = logging.getLogger("weed_spray.vehicle")
 
 
+def ned_down_for_lidar_band(
+    current_down: float, lidar_m: float, min_m: float, max_m: float
+) -> float:
+    """Shift NED ``down`` so lidar AGL moves toward the midpoint of ``[min_m, max_m]``.
+
+    NED z is positive down. If lidar is too high (too many metres AGL), increase
+    ``down`` (descend). If too low, decrease ``down`` (climb). Does not invent AGL.
+
+    Args:
+        current_down: Current Offboard NED down (negative = above origin).
+        lidar_m: Trusted DISTANCE_SENSOR metres.
+        min_m / max_m: Inclusive accept band.
+
+    Returns:
+        New NED down command.
+    """
+    target = (min_m + max_m) / 2.0
+    return current_down + (lidar_m - target)
+
+
+def should_nudge_for_lidar_band(
+    lidar_m: float,
+    min_m: float,
+    max_m: float,
+    last_nudged_lidar_m: float | None,
+    *,
+    change_eps_m: float = 0.02,
+) -> bool:
+    """Whether to apply ``ned_down_for_lidar_band`` for this poll.
+
+    One nudge then wait. Re-applying ``down + (lidar - midpoint)`` on an
+    already-nudged ``down`` when lidar changes (partial descent / noise)
+    walks Offboard NED through the band into the ground or sky (PR #34).
+
+    ``change_eps_m`` is unused; kept so callers that passed it still type-check.
+    """
+    _ = change_eps_m
+    if min_m <= lidar_m <= max_m:
+        return False
+    return last_nudged_lidar_m is None
+
+
 def _parse_distance_m(current: object) -> float | None:
     """Float metres or None for NaN / non-positive / junk."""
     if current is None:
@@ -321,6 +363,8 @@ class Vehicle:
 
         Proof is lidar, not local ``z`` / relative_alt. Timeout does not invent AGL.
         Optional NED is re-sent so Offboard keeps the descend setpoint.
+        At most one lidar-error NED nudge per wait; then hold that setpoint
+        until in-band or timeout (partial descent must not restack error).
 
         Args:
             min_m: Inclusive lower accept band (metres AGL).
@@ -336,6 +380,7 @@ class Vehicle:
         """
         deadline = asyncio.get_event_loop().time() + timeout_s
         last: float | None = None
+        last_nudged_lidar: float | None = None
         while asyncio.get_event_loop().time() < deadline:
             if north is not None and east is not None and down is not None:
                 await self.drone.offboard.set_position_ned(PositionNedYaw(north, east, down, 0.0))
@@ -343,6 +388,16 @@ class Vehicle:
             last = telem.distance_sensor_m
             if last is not None and not telem.distance_sensor_missing and min_m <= last <= max_m:
                 return last
+            if (
+                last is not None
+                and not telem.distance_sensor_missing
+                and down is not None
+                and north is not None
+                and east is not None
+                and should_nudge_for_lidar_band(last, min_m, max_m, last_nudged_lidar)
+            ):
+                down = ned_down_for_lidar_band(down, last, min_m, max_m)
+                last_nudged_lidar = last
             await asyncio.sleep(0.25)
         rel = self.telemetry.relative_alt_m
         raise TimeoutError(f"hover AGL not in band (lidar={last} rel={rel})")
