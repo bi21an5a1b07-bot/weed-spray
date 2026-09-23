@@ -75,11 +75,30 @@ def test_stuck_lidar_does_not_restack_ned_nudge():
     assert downs == [downs[0]] * 4
 
 
-def test_lidar_change_allows_another_nudge():
-    """A new lidar reading may nudge again; unchanged reading must not."""
+def test_partial_descent_does_not_restack_ned_nudge():
+    """After one nudge, a changing out-of-band lidar must not re-add full error (#34).
+
+    lidar 0.55 → down -0.28; 0.50 then 0.45 must keep -0.28, not walk to +0.11.
+    """
+    from weed_spray.backend.vehicle import ned_down_for_lidar_band, should_nudge_for_lidar_band
+
+    down = -0.55
+    last_nudged: float | None = None
+    downs: list[float] = []
+    for lidar in (0.55, 0.50, 0.45, 0.40):
+        if should_nudge_for_lidar_band(lidar, 0.24, 0.32, last_nudged):
+            down = ned_down_for_lidar_band(down, lidar, 0.24, 0.32)
+            last_nudged = lidar
+        downs.append(down)
+    assert downs[0] == pytest.approx(-0.28)
+    assert downs == [downs[0]] * 4
+
+
+def test_after_first_nudge_later_readings_wait():
+    """First out-of-band reading may nudge; later readings wait (no restack)."""
     from weed_spray.backend.vehicle import should_nudge_for_lidar_band
 
     assert should_nudge_for_lidar_band(0.55, 0.24, 0.32, None) is True
     assert should_nudge_for_lidar_band(0.55, 0.24, 0.32, 0.55) is False
-    assert should_nudge_for_lidar_band(0.40, 0.24, 0.32, 0.55) is True
+    assert should_nudge_for_lidar_band(0.40, 0.24, 0.32, 0.55) is False
     assert should_nudge_for_lidar_band(0.28, 0.24, 0.32, 0.55) is False

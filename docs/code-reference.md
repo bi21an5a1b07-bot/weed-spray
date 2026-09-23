@@ -183,7 +183,11 @@ Send one NED setpoint then `offboard.start()`. MAVSDK keeps ≥ 2 Hz. One retry 
 
 #### `ned_down_for_lidar_band(current_down, lidar_m, min_m, max_m) -> float`
 
-Pure helper (#33): shift NED `down` toward the midpoint of `[min_m, max_m]` using **lidar** metres (not local `z`). Too-high lidar → more positive down (descend); too-low → climb.
+Pure helper (#33): shift NED `down` toward the midpoint of `[min_m, max_m]` using **lidar** metres (not local `z`). Too-high lidar → more positive down (descend); too-low → climb. One-shot only — do not re-apply onto an already-nudged `down` when lidar changes (PR #34).
+
+#### `should_nudge_for_lidar_band(lidar_m, min_m, max_m, last_nudged_lidar_m, *, change_eps_m=0.02) -> bool`
+
+True only for the **first** out-of-band poll (`last_nudged_lidar_m is None`). Later readings wait. Prevents restacking full `(lidar - midpoint)` onto already-nudged NED during partial descent.
 
 #### `async Vehicle.goto_ned(north, east, down, settle_s=2.0)`
 
@@ -191,7 +195,7 @@ Offboard position. `down` is NED z (positive down). Sleeps `settle_s` (FakeVehic
 
 #### `async Vehicle.wait_lidar_hover_band(min_m, max_m, timeout_s=15.0, north=None, east=None, down=None) -> float`
 
-Poll trusted `DISTANCE_SENSOR` until it is in `[min_m, max_m]`. Proof is lidar, not local `z`. If `north`/`east`/`down` are all set, re-sends that Offboard NED each poll so PX4 does not drop Offboard. Raises `TimeoutError` with last lidar and relative_alt. FakeVehicle checks immediately (no sleep).
+Poll trusted `DISTANCE_SENSOR` until it is in `[min_m, max_m]`. Proof is lidar, not local `z`. If `north`/`east`/`down` are all set, re-sends that Offboard NED each poll so PX4 does not drop Offboard. At most **one** lidar-error NED nudge, then hold until in-band or timeout. Raises `TimeoutError` with last lidar and relative_alt. FakeVehicle checks immediately (no sleep).
 
 #### `async Vehicle.goto_global_agl(lat_deg, lon_deg, agl_m, settle_s=2.0)`
 

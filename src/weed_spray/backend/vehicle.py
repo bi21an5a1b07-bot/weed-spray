@@ -52,15 +52,16 @@ def should_nudge_for_lidar_band(
 ) -> bool:
     """Whether to apply ``ned_down_for_lidar_band`` for this poll.
 
-    Re-applying the full lidar error every 0.25 s while DISTANCE_SENSOR is
-    stuck walks Offboard NED through the band into the ground/sky (BugScout
-    #34). Nudge only when out of band and lidar is new (or first nudge).
+    One nudge then wait. Re-applying ``down + (lidar - midpoint)`` on an
+    already-nudged ``down`` when lidar changes (partial descent / noise)
+    walks Offboard NED through the band into the ground or sky (PR #34).
+
+    ``change_eps_m`` is unused; kept so callers that passed it still type-check.
     """
+    _ = change_eps_m
     if min_m <= lidar_m <= max_m:
         return False
-    if last_nudged_lidar_m is None:
-        return True
-    return abs(lidar_m - last_nudged_lidar_m) > change_eps_m
+    return last_nudged_lidar_m is None
 
 
 def _parse_distance_m(current: object) -> float | None:
@@ -362,8 +363,8 @@ class Vehicle:
 
         Proof is lidar, not local ``z`` / relative_alt. Timeout does not invent AGL.
         Optional NED is re-sent so Offboard keeps the descend setpoint.
-        Lidar-error NED nudges run at most once per distinct out-of-band
-        reading (stuck lidar must not stack full error every poll).
+        At most one lidar-error NED nudge per wait; then hold that setpoint
+        until in-band or timeout (partial descent must not restack error).
 
         Args:
             min_m: Inclusive lower accept band (metres AGL).
