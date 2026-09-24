@@ -42,16 +42,34 @@ def list_sources() -> None:
     print("Priority collect: your own lawn photos in weeds/inbox/ (1-10 m and 6-12 in AGL).")
 
 
-def missing_train_classes() -> list[str]:
-    """Class names with zero YOLO label rows in ``labels/train``.
+def _train_image_stems() -> set[str]:
+    """Stems of RGB files under ``images/train`` (same pairing Ultralytics uses)."""
+    folder = ROOT / "weeds" / "dataset" / "images" / "train"
+    if not folder.is_dir():
+        return set()
+    return {
+        path.stem
+        for path in folder.iterdir()
+        if path.is_file() and path.suffix.lower() in IMAGE_EXTS
+    }
 
-    Comment lines and blank lines are ignored. Ids outside 0..nc-1 are ignored.
-    A missing labels directory means every class is missing.
+
+def missing_train_classes() -> list[str]:
+    """Class names with zero YOLO label rows paired to ``images/train``.
+
+    Only ``labels/train/<stem>.txt`` files whose stem matches an image in
+    ``images/train`` are counted (same stem pairing Ultralytics uses). Orphan
+    label files without a matching image do not satisfy the gate. Comment lines
+    and blank lines are ignored. Ids outside 0..nc-1 are ignored. A missing
+    labels directory means every class is missing.
     """
     folder = ROOT / "weeds" / "dataset" / "labels" / "train"
+    paired_stems = _train_image_stems()
     counts = {idx: 0 for idx in NAMES}
     if folder.is_dir():
         for path in folder.glob("*.txt"):
+            if path.stem not in paired_stems:
+                continue
             for line in path.read_text().splitlines():
                 text = line.strip()
                 if not text or text.startswith("#"):
