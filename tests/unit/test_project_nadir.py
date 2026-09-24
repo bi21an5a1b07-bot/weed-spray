@@ -119,3 +119,25 @@ def test_point_outside_fence_is_none():
         fence=(1.0, -1.0, 0.1, -1.0),
     )
     assert point is None
+
+
+def test_fence_edge_is_inside_despite_tan_float():
+    """Hand-calc 0.2 m east must sit on the fence edge, not trip float >.
+
+    tan(π/4) float makes fx ≈ 320.00000000000006 so east ≈ 0.20000000000000015.
+    Docstring: the edge itself is inside.
+    """
+    point = project_nadir(
+        cx=0.5 + 32 / 640,
+        cy=0.5,
+        frame_w=640,
+        frame_h=480,
+        hfov_deg=90.0,
+        height_m=2.0,
+        north_m=0.0,
+        east_m=0.0,
+        heading_deg=0.0,
+        fence=(1.0, -1.0, 0.2, -1.0),
+    )
+    assert point is not None
+    assert point == pytest.approx((0.0, 0.2), abs=1e-9)
