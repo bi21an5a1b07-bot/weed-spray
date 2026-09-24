@@ -478,7 +478,17 @@ Count RGB files in `weeds/dataset/images/{train,val}`. Ignores `.gitkeep` and no
 
 Print `bot_files/weeds_sources.md`. Does not download. Reminds the operator to collect backyard photos in `weeds/inbox/`.
 
+### `missing_train_classes() -> list[str]`
+
+Names in `labels/train` with zero YOLO rows. A missing folder means every class.
+
+### `load_yolo()`
+
+Imports Ultralytics `YOLO`. Tests replace it.
+
 ### `train(device, epochs, imgsz, model) -> int`
+
+Exit 2 if train or val has no images, or if any class has zero train boxes (names the class). Then loads YOLO.
 
 Run Ultralytics on `weeds.yaml`. Returns **2** if train/val is empty or `ultralytics` is missing (`uv sync --extra yolo`). Writes to `var/yolo/weeds`. Returns **0** on success.
 

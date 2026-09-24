@@ -24,7 +24,7 @@ uv sync --extra yolo
 WEED_YOLO_WEIGHTS=var/yolo/weeds/weights/best.pt uv run weed-spray-vision
 ```
 
-Georeference stays off here. The backend copies pixels into the mission only when `WEED_YOLO_GEOREFERENCE=1` during scan. `weed-spray-train` refuses to run on an empty `weeds/dataset/`.
+Georeference stays off here. The backend copies pixels into the mission only when `WEED_YOLO_GEOREFERENCE=1` during scan. `weed-spray-train` refuses to run on an empty `weeds/dataset/`, and it also refuses when any of the four classes has zero label rows in train. Print those counts before trusting a live run. Clover may be absent from the backyard clip; do not describe that class as detected.
 
 ## Training (optional)
 

@@ -42,6 +42,36 @@ def list_sources() -> None:
     print("Priority collect: your own lawn photos in weeds/inbox/ (1-10 m and 6-12 in AGL).")
 
 
+def missing_train_classes() -> list[str]:
+    """Class names with zero YOLO label rows in ``labels/train``.
+
+    Comment lines and blank lines are ignored. Ids outside 0..nc-1 are ignored.
+    A missing labels directory means every class is missing.
+    """
+    folder = ROOT / "weeds" / "dataset" / "labels" / "train"
+    counts = {idx: 0 for idx in NAMES}
+    if folder.is_dir():
+        for path in folder.glob("*.txt"):
+            for line in path.read_text().splitlines():
+                text = line.strip()
+                if not text or text.startswith("#"):
+                    continue
+                token = text.split()[0]
+                if not token.isdigit():
+                    continue
+                idx = int(token)
+                if idx in counts:
+                    counts[idx] += 1
+    return [NAMES[idx] for idx in sorted(counts) if counts[idx] == 0]
+
+
+def load_yolo():
+    """Import Ultralytics ``YOLO``. Tests replace this so CI does not download weights."""
+    from ultralytics import YOLO
+
+    return YOLO
+
+
 def train(device: str, epochs: int, imgsz: int, model: str) -> int:
     """Run Ultralytics on ``weeds.yaml``. Exit 2 if dataset empty or extra missing."""
     n_train = _count_images("train")
@@ -54,13 +84,21 @@ def train(device: str, epochs: int, imgsz: int, model: str) -> int:
             file=sys.stderr,
         )
         return 2
+    missing = missing_train_classes()
+    if missing:
+        print(
+            f"no boxes for {', '.join(missing)}. "
+            "A class with zero train rows must not be described as detected.",
+            file=sys.stderr,
+        )
+        return 2
     try:
-        from ultralytics import YOLO
+        yolo_cls = load_yolo()
     except ImportError:
         print("install the extra: uv sync --extra yolo", file=sys.stderr)
         return 2
     print(f"classes={NAMES} nc={NC} train={n_train} val={n_val}")
-    YOLO(model).train(
+    yolo_cls(model).train(
         data=str(YAML),
         epochs=epochs,
         imgsz=imgsz,
