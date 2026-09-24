@@ -40,3 +40,33 @@ def test_camera_failure_clears_boxes_and_does_not_raise():
     assert camera.ok is False
     assert camera.error == "rtsp closed"
     assert seen[-1] == []
+
+
+def test_drive_rtsp_weights_load_failure_clears_and_returns_not_ok(monkeypatch):
+    """YOLO(weights) raising before consume_frames must not leave sticky rows."""
+    import sys
+    import types
+
+    from weed_spray.vision.reader import drive_rtsp
+
+    boom = types.ModuleType("ultralytics")
+
+    class _Boom:
+        def __init__(self, *_a, **_k):
+            raise RuntimeError("bad weights")
+
+    boom.YOLO = _Boom
+    monkeypatch.setitem(sys.modules, "ultralytics", boom)
+
+    seen: list[list[dict]] = []
+    status = drive_rtsp(
+        "dummy.pt",
+        "rtsp://127.0.0.1:8554/cam",
+        publish=seen.append,
+        conf_min=0.5,
+        imgsz=640,
+        device="cpu",
+    )
+    assert status.ok is False
+    assert "bad weights" in (status.error or "")
+    assert seen == [[]]
