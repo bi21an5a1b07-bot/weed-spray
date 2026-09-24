@@ -35,6 +35,19 @@ def test_missing_or_non_positive_leaves_both_empty():
     assert telem.east_m is None
 
 
+@pytest.mark.parametrize("bad", [None, 0, float("nan")])
+def test_missing_after_scan_clears_distance_scan_m(bad):
+    """Once filled, a missing/non-positive sample must not leave sticky scan metres."""
+    telem = Telemetry()
+    apply_distance_sample(telem, 2.0, relative_alt_m=2.0)
+    assert telem.distance_scan_m == pytest.approx(2.0)
+    assert telem.distance_sensor_stream_alive is True
+    apply_distance_sample(telem, bad, relative_alt_m=2.0)
+    assert telem.distance_sensor_m is None
+    assert telem.distance_scan_m is None
+    assert telem.distance_sensor_stream_alive is False
+
+
 @pytest.mark.asyncio
 async def test_ned_tracker_stores_north_east_and_not_agl():
     vehicle = Vehicle()

@@ -156,12 +156,20 @@ def apply_distance_sample(
 
     value = _parse_distance_m(current)
     if value is None or relative_alt_m is None:
+        # Missing/non-positive must clear scan metres too - sticky value after
+        # the first 1-5 m fill falsely unlocks #35 georeference (#49 follow-up).
+        telem.distance_sensor_stream_alive = False
+        telem.distance_scan_m = None
         return
     try:
         rel = float(relative_alt_m)
     except (TypeError, ValueError):
+        telem.distance_sensor_stream_alive = False
+        telem.distance_scan_m = None
         return
     if math.isnan(rel):
+        telem.distance_sensor_stream_alive = False
+        telem.distance_scan_m = None
         return
     if stream_min_m <= value <= stream_max_m and stream_min_m <= rel <= stream_max_m:
         telem.distance_sensor_stream_alive = True
