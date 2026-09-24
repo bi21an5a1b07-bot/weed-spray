@@ -174,6 +174,10 @@ def apply_distance_sample(
     if stream_min_m <= value <= stream_max_m and stream_min_m <= rel <= stream_max_m:
         telem.distance_sensor_stream_alive = True
         telem.distance_scan_m = value
+    else:
+        # Out-of-band (hover or >5 m) must drop sticky scan metres too (#52).
+        telem.distance_sensor_stream_alive = False
+        telem.distance_scan_m = None
 
 
 class Vehicle:

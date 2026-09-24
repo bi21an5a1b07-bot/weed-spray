@@ -64,3 +64,18 @@ async def test_ned_tracker_stores_north_east_and_not_agl():
     assert telem.distance_sensor_m is None
     assert telem.distance_scan_m is None
     assert telem.relative_alt_m is None
+
+
+def test_out_of_band_after_scan_clears_distance_scan_m():
+    """Hover or >5 m after a 1-5 m fill must not leave sticky scan metres."""
+    telem = Telemetry()
+    apply_distance_sample(telem, 2.0, relative_alt_m=2.0)
+    assert telem.distance_scan_m == pytest.approx(2.0)
+    apply_distance_sample(telem, 0.27, relative_alt_m=0.27)
+    assert telem.distance_scan_m is None
+    assert telem.distance_sensor_stream_alive is False
+
+    apply_distance_sample(telem, 2.0, relative_alt_m=2.0)
+    apply_distance_sample(telem, 6.0, relative_alt_m=2.0)
+    assert telem.distance_scan_m is None
+    assert telem.distance_sensor_stream_alive is False
