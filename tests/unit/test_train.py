@@ -137,3 +137,44 @@ def test_train_refuses_when_only_orphan_labels_have_classes(tmp_path, monkeypatc
     err = capsys.readouterr().err
     assert "clover" in err
     assert "mallow" in err
+
+
+def test_missing_train_classes_counts_ultralytics_bmp_pair(tmp_path, monkeypatch):
+    """Paired .bmp + labels must clear the gate (Ultralytics IMG_FORMATS includes bmp).
+
+    Failure mode BugScout filed on #60: a.jpg (empty) + b.bmp with ids 0-3 must not
+    treat b as orphan and exit-2 every class — Ultralytics would stem-pair b.bmp.
+    """
+    images = tmp_path / "weeds" / "dataset" / "images" / "train"
+    labels = tmp_path / "weeds" / "dataset" / "labels" / "train"
+    images.mkdir(parents=True)
+    labels.mkdir(parents=True)
+    (images / "a.jpg").write_bytes(b"x")
+    (labels / "a.txt").write_text("")
+    (images / "b.bmp").write_bytes(b"BM")
+    (labels / "b.txt").write_text(
+        "0 0.5 0.5 0.2 0.2\n1 0.4 0.4 0.2 0.2\n2 0.3 0.3 0.2 0.2\n3 0.2 0.2 0.2 0.2\n"
+    )
+    monkeypatch.setattr(train_mod, "ROOT", tmp_path)
+    assert train_mod.missing_train_classes() == []
+
+
+def test_missing_train_classes_ignores_non_ultralytics_image_ext(tmp_path, monkeypatch):
+    """Label paired only to a non-IMG_FORMATS file (e.g. .xyz) stays orphan."""
+    images = tmp_path / "weeds" / "dataset" / "images" / "train"
+    labels = tmp_path / "weeds" / "dataset" / "labels" / "train"
+    images.mkdir(parents=True)
+    labels.mkdir(parents=True)
+    (images / "a.jpg").write_bytes(b"x")
+    (labels / "a.txt").write_text("")
+    (images / "ghost.xyz").write_bytes(b"nope")
+    (labels / "ghost.txt").write_text(
+        "0 0.5 0.5 0.2 0.2\n1 0.4 0.4 0.2 0.2\n2 0.3 0.3 0.2 0.2\n3 0.2 0.2 0.2 0.2\n"
+    )
+    monkeypatch.setattr(train_mod, "ROOT", tmp_path)
+    assert train_mod.missing_train_classes() == [
+        "dandelion",
+        "clover",
+        "thistle",
+        "mallow",
+    ]

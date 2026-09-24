@@ -8,7 +8,25 @@ from pathlib import Path
 
 from weed_spray.vision.classes import CLASSES, NAMES, NC, YAML_RELATIVE
 
-IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
+# Match ultralytics 8.4.135 ``ultralytics.data.utils.IMG_FORMATS`` (pinned in uv.lock).
+# Keep in sync when bumping the yolo extra; do not invent formats.
+IMAGE_EXTS = frozenset(
+    {
+        ".avif",
+        ".bmp",
+        ".dng",
+        ".heic",
+        ".heif",
+        ".jp2",
+        ".jpeg",
+        ".jpg",
+        ".mpo",
+        ".png",
+        ".tif",
+        ".tiff",
+        ".webp",
+    }
+)
 
 
 def repo_root() -> Path:
@@ -27,7 +45,7 @@ YAML = ROOT / YAML_RELATIVE
 
 
 def _count_images(split: str) -> int:
-    """Count RGB files in ``weeds/dataset/images/{train,val}``. Ignores .gitkeep."""
+    """Count Ultralytics-recognized images in ``weeds/dataset/images/{train,val}``. Ignores .gitkeep."""
     folder = ROOT / "weeds" / "dataset" / "images" / split
     if not folder.is_dir():
         return 0
@@ -43,7 +61,7 @@ def list_sources() -> None:
 
 
 def _train_image_stems() -> set[str]:
-    """Stems of RGB files under ``images/train`` (same pairing Ultralytics uses)."""
+    """Stems under ``images/train`` with suffixes in ``IMAGE_EXTS`` (Ultralytics IMG_FORMATS)."""
     folder = ROOT / "weeds" / "dataset" / "images" / "train"
     if not folder.is_dir():
         return set()
@@ -57,11 +75,12 @@ def _train_image_stems() -> set[str]:
 def missing_train_classes() -> list[str]:
     """Class names with zero YOLO label rows paired to ``images/train``.
 
-    Only ``labels/train/<stem>.txt`` files whose stem matches an image in
-    ``images/train`` are counted (same stem pairing Ultralytics uses). Orphan
-    label files without a matching image do not satisfy the gate. Comment lines
-    and blank lines are ignored. Ids outside 0..nc-1 are ignored. A missing
-    labels directory means every class is missing.
+    Only ``labels/train/<stem>.txt`` files whose stem matches an
+    ``IMAGE_EXTS`` file in ``images/train`` are counted (same stem pairing
+    Ultralytics uses for its IMG_FORMATS set). Orphan label files without a
+    matching image do not satisfy the gate. Comment lines and blank lines are
+    ignored. Ids outside 0..nc-1 are ignored. A missing labels directory means
+    every class is missing.
     """
     folder = ROOT / "weeds" / "dataset" / "labels" / "train"
     paired_stems = _train_image_stems()
