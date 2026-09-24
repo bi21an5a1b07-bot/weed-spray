@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import logging
+import os
+import threading
+from pathlib import Path
 from typing import Any
 
 import uvicorn
@@ -10,7 +13,13 @@ from fastapi import FastAPI
 from pydantic import BaseModel, Field, field_validator
 
 from weed_spray.vision.classes import CLASSES, NAMES
-from weed_spray.vision.runtime import configure_logging, note_configured_weights
+from weed_spray.vision.reader import drive_rtsp, env_reader_settings
+from weed_spray.vision.runtime import (
+    attach_reader,
+    configure_logging,
+    note_configured_weights,
+    reader_view,
+)
 
 log = logging.getLogger("weed_spray.vision")
 
@@ -46,20 +55,33 @@ class InjectRequest(BaseModel):
 
 @app.get("/health")
 async def health():
-    """Liveness. Missing ``WEED_YOLO_WEIGHTS`` stays injector and does not start YOLO."""
+    """Liveness. A missing weights file stays injector. An attached reader is ``yolo``."""
     note_configured_weights()
+    view = reader_view()
+    if view is None:
+        return {
+            "ok": True,
+            "mode": "injector",
+            "count": len(_boxes),
+            "names": NAMES,
+            "weights": None,
+        }
     return {
         "ok": True,
-        "mode": "injector",
-        "count": len(_boxes),
+        "mode": "yolo",
+        "count": len(view["rows"]),
         "names": NAMES,
-        "weights": None,
+        "weights": view["weights"],
+        "camera": view["camera"],
     }
 
 
 @app.get("/detections")
 async def detections():
-    """Return the current injected box list."""
+    """Injector boxes, or the latest pixel rows when a YOLO reader is attached."""
+    view = reader_view()
+    if view is not None:
+        return {"detections": view["rows"]}
     return {"detections": _boxes}
 
 
@@ -83,9 +105,49 @@ async def clear():
     return {"detections": []}
 
 
+def _open_yolo_if_configured() -> None:
+    """If weights exist, serve YOLO mode. Import Ultralytics only in that branch.
+
+    A missing extra leaves the process up with ``camera`` false and no boxes.
+    A present extra starts one daemon RTSP reader. Georeference is not this
+    process: rows stay pixels.
+    """
+    raw = os.environ.get("WEED_YOLO_WEIGHTS", "").strip()
+    if not raw or not Path(raw).is_file():
+        return
+    try:
+        import ultralytics  # noqa: F401  import only when a weights file exists
+    except ImportError:
+        log.info("ultralytics is not installed (uv sync --extra yolo); camera down")
+        attach_reader(weights=raw, rows=[], camera_ok=False)
+        return
+
+    url, conf, imgsz, device = env_reader_settings()
+    attach_reader(weights=raw, rows=[], camera_ok=True)
+
+    def _thread() -> None:
+        def publish(rows: list[dict]) -> None:
+            attach_reader(weights=raw, rows=rows, camera_ok=True)
+
+        status = drive_rtsp(
+            raw,
+            url,
+            publish=publish,
+            conf_min=conf,
+            imgsz=imgsz,
+            device=device,
+        )
+        if not status.ok:
+            log.info("camera down: %s", status.error)
+            attach_reader(weights=raw, rows=[], camera_ok=False)
+
+    threading.Thread(target=_thread, name="yolo-rtsp", daemon=True).start()
+
+
 def run() -> None:
     """CLI entry ``weed-spray-vision``."""
     configure_logging()
+    _open_yolo_if_configured()
     uvicorn.run(
         "weed_spray.vision.main:app",
         host="127.0.0.1",

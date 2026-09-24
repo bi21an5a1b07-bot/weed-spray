@@ -386,6 +386,20 @@ Args: normalized center, frame size, `hfov_deg`, `height_m`, vehicle north/east,
 
 ---
 
+## `src/weed_spray/vision/reader.py`
+
+Frame loop. Does not import Ultralytics at import time.
+
+### `consume_frames(frames, predict, *, publish, conf_min, imgsz) -> CameraStatus`
+
+Publish pixel rows per frame. The next frame replaces the list. Any exception publishes `[]` and returns `ok=False`.
+
+### `drive_rtsp(weights, url, *, publish, conf_min, imgsz, device) -> CameraStatus`
+
+`YOLO.predict(source=url, stream=True)` at about 5 Hz. Import happens inside the function.
+
+---
+
 ## `src/weed_spray/vision/runtime.py`
 
 Injector gate for `WEED_YOLO_WEIGHTS`. Does not load a model.
@@ -428,8 +442,8 @@ Pydantic validator. Rejects crabgrass / other_weed / anything not in `CLASSES`.
 
 | Handler | Path | Behavior |
 |---|---|---|
-| `health` | `GET /health` | `mode=injector`, frozen `names`, `weights=None`, `count`. Calls `note_configured_weights`: a missing `WEED_YOLO_WEIGHTS` file logs once and does not start a runner. |
-| `detections` | `GET /detections` | Current box list |
+| `health` | `GET /health` | Injector: `mode=injector`, `weights=null`. YOLO reader attached: `mode=yolo`, weights path, `camera`. A missing weights file logs once and does not start a runner. |
+| `detections` | `GET /detections` | Injector boxes, or the latest pixel rows (no north/east) when a reader is attached |
 | `inject` | `POST /inject` | Upsert by id; does not confirm spray |
 | `clear` | `DELETE /detections` | Drop all boxes |
 

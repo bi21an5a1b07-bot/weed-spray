@@ -30,6 +30,54 @@ def test_configure_logging_prints_missing_weights(monkeypatch, tmp_path, capsys)
     assert f"WEED_YOLO_WEIGHTS {missing} is missing; staying injector" in err
 
 
+def test_yolo_mode_serves_pixels_not_metres(monkeypatch, tmp_path):
+    weights = tmp_path / "best.pt"
+    weights.write_bytes(b"not-a-model")
+    monkeypatch.setenv("WEED_YOLO_WEIGHTS", str(weights))
+    runtime.reset_for_tests()
+    runtime.attach_reader(
+        weights=str(weights),
+        rows=[
+            {
+                "class": "dandelion",
+                "conf": 0.9,
+                "cx": 0.5,
+                "cy": 0.4,
+                "w": 0.2,
+                "h": 0.2,
+                "frame_w": 640,
+                "frame_h": 480,
+                "frame_t": "t0",
+            }
+        ],
+        camera_ok=True,
+    )
+    with TestClient(app) as client:
+        health = client.get("/health").json()
+        listed = client.get("/detections").json()["detections"]
+    assert health["mode"] == "yolo"
+    assert health["weights"] == str(weights)
+    assert health["camera"] is True
+    assert listed[0]["class"] == "dandelion"
+    assert "north_m" not in listed[0]
+    assert runtime.runner_started() is True
+
+
+def test_yolo_camera_down_returns_no_boxes(monkeypatch, tmp_path):
+    weights = tmp_path / "best.pt"
+    weights.write_bytes(b"not-a-model")
+    monkeypatch.setenv("WEED_YOLO_WEIGHTS", str(weights))
+    runtime.reset_for_tests()
+    runtime.attach_reader(weights=str(weights), rows=[], camera_ok=False)
+    with TestClient(app) as client:
+        health = client.get("/health").json()
+        listed = client.get("/detections").json()["detections"]
+    assert health["ok"] is True
+    assert health["mode"] == "yolo"
+    assert health["camera"] is False
+    assert listed == []
+
+
 def test_missing_weights_stay_injector_and_do_not_start_runner(monkeypatch, tmp_path, caplog):
     missing = tmp_path / "no-such.pt"
     monkeypatch.setenv("WEED_YOLO_WEIGHTS", str(missing))
