@@ -17,7 +17,14 @@ Code source of truth: `weeds/weeds.yaml` and `weed_spray.vision.classes`.
 
 ## SITL v1
 
-The vision worker is an **injector**. Live YOLO on RTSP is later, after labeled data exists. `weed-spray-train` refuses to run on an empty `weeds/dataset/`.
+The vision worker is an **injector** until `WEED_YOLO_WEIGHTS` points at a real file. A missing path stays the injector. A present file serves pixel rows on `GET /detections` (no north/east). Without the `yolo` extra the process stays up and reports `camera: false`.
+
+```bash
+uv sync --extra yolo
+WEED_YOLO_WEIGHTS=var/yolo/weeds/weights/best.pt uv run weed-spray-vision
+```
+
+Georeference stays off here. The backend copies pixels into the mission only when `WEED_YOLO_GEOREFERENCE=1` during scan. `weed-spray-train` refuses to run on an empty `weeds/dataset/`.
 
 ## Training (optional)
 
