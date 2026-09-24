@@ -472,7 +472,7 @@ Resolved once at import.
 
 ### `_count_images(split) -> int`
 
-Count RGB files in `weeds/dataset/images/{train,val}`. Ignores `.gitkeep` and non-image files.
+Count files in `weeds/dataset/images/{train,val}` whose suffix is in `IMAGE_EXTS` (Ultralytics `IMG_FORMATS` mirror). Ignores `.gitkeep` and other files.
 
 ### `list_sources()`
 
@@ -480,7 +480,7 @@ Print `bot_files/weeds_sources.md`. Does not download. Reminds the operator to c
 
 ### `missing_train_classes() -> list[str]`
 
-Class names with zero YOLO label rows **paired** to `images/train` (same stem pairing Ultralytics uses). Only `labels/train/<stem>.txt` whose stem matches an RGB file under `images/train` count; orphan label files without a matching image do **not** clear the gate. Comment/blank lines and ids outside `0..nc-1` are ignored. A missing labels folder means every class.
+Class names with zero YOLO label rows **paired** to `images/train`. Only `labels/train/<stem>.txt` whose stem matches an `IMAGE_EXTS` file under `images/train` count (`IMAGE_EXTS` mirrors Ultralytics 8.4.135 `IMG_FORMATS`: jpg/png/webp/bmp/tif/…). Orphan label files without a matching image do **not** clear the gate. Comment/blank lines and ids outside `0..nc-1` are ignored. A missing labels folder means every class.
 
 ### `load_yolo()`
 
