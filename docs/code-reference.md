@@ -369,6 +369,18 @@ Keep ids in `NAMES` with `conf >= conf_min` and short side `min(w, h) * imgsz` â
 
 ---
 
+## `src/weed_spray/vision/project.py`
+
+Nadir pixel to local north/east. No default lens. No MAVSDK.
+
+Image-right is body-right (+east at heading 0). Image-down is aft (-north at heading 0). That second sign is the function's convention until a Gazebo frame checks the mount. Georeference stays off.
+
+### `project_nadir(...) -> tuple[float, float] | None`
+
+Args: normalized center, frame size, `hfov_deg`, `height_m`, vehicle north/east, heading degrees, optional fence `(north, south, east, west)`. `None` when height or FOV is missing, the center is outside 0-1, or the point is outside the fence. Image center returns the vehicle point.
+
+---
+
 ## `src/weed_spray/vision/runtime.py`
 
 Injector gate for `WEED_YOLO_WEIGHTS`. Does not load a model.
