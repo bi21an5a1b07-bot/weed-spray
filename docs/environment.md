@@ -22,6 +22,11 @@ Prefix `WEED_`. Defined in `weed_spray.backend.config.Settings`.
 | `WEED_PUMP_PULSE_S` | `0.75` | App sleep, not a PX4 dwell |
 | `WEED_LAWNMOWER_SPACING_M` | `4.0` | Row spacing in local east |
 | `WEED_SCAN_SPEED_M_S` | `2.0` | Reserved; path currently uses settle sleeps |
+| `WEED_YOLO_GEOREFERENCE` | `false` | During scan only, project vision pixels into unconfirmed `y*` rows. Off does not copy pixels into the mission |
+| `WEED_CAM_HFOV_DEG` | unset | Horizontal FOV in degrees. Required when georeference is on. Unset skips the frame. Do not invent this |
+| `WEED_YOLO_ASSOC_M` | `0.35` | Same-class match radius in metres |
+| `WEED_YOLO_CONF` | `0.5` | Drop pixel rows below this |
+| `WEED_YOLO_IMGSZ` | `640` | Inference size for the 20 px short-side rule |
 
 Unknown PX4 enums (`COM_OF_LOSS_T`, Kakute MAIN vs AUX, DIS/FAIL µs) are **not** set from env. Operator/QGC owns those.
 

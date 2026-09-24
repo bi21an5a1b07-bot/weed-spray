@@ -257,6 +257,10 @@ Upload the yard rectangle to PX4 and store it on state.
 
 Merge detections by id. Raises `ValueError` if `class` is outside `{dandelion, clover, thistle, mallow}`. Does not confirm.
 
+#### `Mission.observe_pixels(pixels)`
+
+When `WEED_YOLO_GEOREFERENCE` is on and phase is `scanning`, project pixel rows (`cx`/`cy`, no north/east required) through `project_nadir` using `distance_scan_m` and `WEED_CAM_HFOV_DEG`. Same-class hits within `WEED_YOLO_ASSOC_M` share a `y*` id (median of the last few). Confirm or reject locks the position. Never sets `confirmed`. Missing lidar or unset HFOV sets `last_error` and does not use `relative_alt_m` or `ned_down_m`. Off, or any other phase: no new rows.
+
 #### `Mission.confirm(req)`
 
 Record confirm/reject. `ids` are treated as confirm. Raises `ValueError` on unknown ids. Does not pulse.

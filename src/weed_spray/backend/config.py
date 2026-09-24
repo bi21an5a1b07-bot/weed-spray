@@ -34,6 +34,13 @@ class Settings(BaseSettings):
         pump_pulse_s: App sleep around set_actuator, not a PX4 dwell.
         lawnmower_spacing_m: Row spacing along local east.
         scan_speed_m_s: Reserved; path currently uses settle sleeps.
+        yolo_georeference: During scan, project vision pixels into local NED.
+            Default false. Requires ``cam_hfov_deg`` and ``distance_scan_m``.
+        cam_hfov_deg: Horizontal field of view in degrees. Unset refuses
+            georeference. Do not invent a lens.
+        yolo_assoc_m: Same-class match radius in metres.
+        yolo_conf: Drop pixel rows below this confidence.
+        yolo_imgsz: Inference size used for the 20 px short-side rule.
     """
 
     model_config = SettingsConfigDict(env_prefix="WEED_", extra="ignore")
@@ -58,6 +65,11 @@ class Settings(BaseSettings):
     pump_pulse_s: float = 0.75
     lawnmower_spacing_m: float = 4.0
     scan_speed_m_s: float = 2.0
+    yolo_georeference: bool = False
+    cam_hfov_deg: float | None = None
+    yolo_assoc_m: float = 0.35
+    yolo_conf: float = 0.5
+    yolo_imgsz: int = 640
 
 
 settings = Settings()
