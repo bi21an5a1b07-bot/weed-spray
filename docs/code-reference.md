@@ -327,6 +327,7 @@ On shutdown, `vehicle.pump_off("shutdown")` even if a pulse is mid-sleep. Errors
 | `fence` | `POST /fence` | Inclusion geofence; **400** on error |
 | `scan` | `POST /scan` | Lawnmower; **409** if already running |
 | `inject` | `POST /detections/inject` | Merge boxes; best-effort forward to vision; **400** unknown class |
+| `vision_boxes` | `GET /vision/boxes` | Pixel rows only (`cx` required). Vision down → empty injector view. Not a confirm. |
 | `confirm` | `POST /confirm` | Human/harness confirm; **400** unknown ids |
 | `visit` | `POST /visit` | Confirmed ids only; **409** if scan running |
 | `rtl` | `POST /rtl` | Pump off + RTL |
@@ -531,9 +532,9 @@ Step 7 fails when `hover_agl_m` is `missing` (expected on SIH). Step 8 requires 
 
 `fetch('/api' + path)` with JSON headers. Throws `Error` with path, status, and body text on non-OK.
 
-### `CamMonitor({ src, rtsp })`
+### `CamMonitor({ rtsp, boxes, onPick })`
 
-`<video>` + `hls.js` on `/hls/cam/index.m3u8`. Vite proxies `/hls` to MediaMTX `:8888`.
+`<video>` + `hls.js` on `/hls/cam/index.m3u8`. Pixel boxes sit on the frame. `onPick` runs only when a box has an id. Vite proxies `/hls` to MediaMTX `:8888`.
 
 ### `function App()`
 

@@ -35,3 +35,20 @@ th, td { text-align: left; padding: 0.35rem 0.5rem; border-bottom: 1px solid #2a
   background: #0b0d10;
 }
 .cam h2 { font-size: 1rem; font-weight: 600; margin: 0 0 0.5rem; }
+.cam-frame { position: relative; }
+.cam-frame .box {
+  position: absolute;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0 0.15rem;
+  border: 2px solid #e6c34a;
+  border-radius: 2px;
+  background: transparent;
+  color: #e6c34a;
+  font-size: 0.75rem;
+  line-height: 1.1;
+  text-align: left;
+  overflow: hidden;
+  pointer-events: none;
+}
+button.box { pointer-events: auto; cursor: pointer; }

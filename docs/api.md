@@ -13,6 +13,7 @@ Base URL in SITL: `http://127.0.0.1:8000`. The dashboard calls the same paths un
 | POST | `/fence` | Body: `{north_m,south_m,east_m,west_m}` local meters |
 | POST | `/scan` | Body: `{source: "dashboard"\|"rc"}` (default `dashboard` if omitted). Starts lawnmower |
 | POST | `/detections/inject` | Body: `{detections:[{id,class,north_m,east_m,conf?}]}` |
+| GET | `/vision/boxes` | Pixel rows from the vision worker (`class`, `conf`, `cx`, `cy`, `w`, `h`). Rows without `cx` are dropped. Vision down → `{mode: injector, camera: false, boxes: []}`. Not a confirm. |
 | POST | `/confirm` | `{ids:[...]}` (listed ids only; empty confirms nothing) and/or `{decisions:[{detection_id, decision: "confirm"\|"reject"}]}` |
 | POST | `/visit` | Visit confirmed ids only; pulse; RTL |
 | POST | `/rtl` | Pump off, return to launch |

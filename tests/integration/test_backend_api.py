@@ -132,3 +132,49 @@ async def test_rc_first_scan(api):
     await asyncio.wait_for(mission._run_task, timeout=2)
     assert fake.waited_in_air == 1
     assert fake.armed_takeoff == 0
+
+
+@pytest.mark.asyncio
+async def test_vision_boxes_drops_rows_without_pixels(api, monkeypatch):
+    client, _, _ = api
+
+    async def fake_view():
+        return {
+            "mode": "yolo",
+            "camera": True,
+            "detections": [
+                {
+                    "class": "dandelion",
+                    "conf": 0.9,
+                    "cx": 0.5,
+                    "cy": 0.4,
+                    "w": 0.2,
+                    "h": 0.2,
+                    "north_m": 3.0,
+                },
+                {"id": "w1", "class": "clover", "north_m": 1, "east_m": 2},
+            ],
+        }
+
+    monkeypatch.setattr(backend_main, "fetch_vision_view", fake_view)
+    rsp = await client.get("/vision/boxes")
+    assert rsp.status_code == 200
+    body = rsp.json()
+    assert body["mode"] == "yolo"
+    assert body["camera"] is True
+    assert body["boxes"] == [
+        {"class": "dandelion", "conf": 0.9, "cx": 0.5, "cy": 0.4, "w": 0.2, "h": 0.2}
+    ]
+
+
+@pytest.mark.asyncio
+async def test_vision_boxes_when_worker_is_down(api, monkeypatch):
+    client, _, _ = api
+
+    async def down():
+        raise httpx.ConnectError("vision down")
+
+    monkeypatch.setattr(backend_main, "fetch_vision_view", down)
+    rsp = await client.get("/vision/boxes")
+    assert rsp.status_code == 200
+    assert rsp.json() == {"mode": "injector", "camera": False, "boxes": []}
