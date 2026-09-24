@@ -136,8 +136,11 @@ async def vision_boxes():
         view = await fetch_vision_view()
     except httpx.HTTPError:
         return {"mode": "injector", "camera": False, "boxes": []}
+    rows = view["detections"]
+    if settings.yolo_georeference:
+        rows = mission.stamp_yolo_ids(rows)
     boxes = []
-    for row in view["detections"]:
+    for row in rows:
         if "cx" not in row:
             continue
         item = {

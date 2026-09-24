@@ -185,3 +185,22 @@ async def test_vision_down_does_not_fail_the_scan(monkeypatch, caplog):
     assert mission._yolo_task is not None
     assert mission._yolo_task.done()
     assert any("vision down" in rec.getMessage() for rec in caplog.records)
+
+
+def test_stamp_yolo_ids_attaches_mission_id(monkeypatch):
+    """Overlay click needs the y* id on the pixel row after observe_pixels."""
+    mission = _mission(monkeypatch)
+    mission.observe_pixels([_pixel()])
+    assert [d.id for d in mission.state.detections] == ["y1"]
+    stamped = mission.stamp_yolo_ids([_pixel()])
+    assert stamped[0]["id"] == "y1"
+    assert stamped[0]["cx"] == pytest.approx(0.5)
+
+
+def test_stamp_yolo_ids_skips_when_georef_off(monkeypatch):
+    mission = _mission(monkeypatch, yolo_georeference=False)
+    mission.state.detections = [
+        Det(id="y1", class_name="dandelion", north_m=10.0, east_m=4.0, conf=0.9)
+    ]
+    stamped = mission.stamp_yolo_ids([_pixel()])
+    assert "id" not in stamped[0]

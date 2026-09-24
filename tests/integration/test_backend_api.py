@@ -178,3 +178,65 @@ async def test_vision_boxes_when_worker_is_down(api, monkeypatch):
     rsp = await client.get("/vision/boxes")
     assert rsp.status_code == 200
     assert rsp.json() == {"mode": "injector", "camera": False, "boxes": []}
+
+
+@pytest.mark.asyncio
+async def test_vision_boxes_stamps_yolo_id_for_click(api, monkeypatch):
+    """Live YOLO pixels have no id; /vision/boxes must join them to mission y*."""
+    client, mission, fake = api
+    monkeypatch.setattr(
+        "weed_spray.backend.mission.settings",
+        backend_main.settings.model_copy(
+            update={
+                "yolo_georeference": True,
+                "cam_hfov_deg": 90.0,
+                "yolo_assoc_m": 0.35,
+                "yolo_conf": 0.5,
+                "yolo_imgsz": 640,
+            }
+        ),
+    )
+    # also patch main.settings if vision_boxes reads it — join uses mission method
+    monkeypatch.setattr(
+        "weed_spray.backend.main.settings",
+        backend_main.settings.model_copy(update={"yolo_georeference": True, "cam_hfov_deg": 90.0}),
+    )
+    fake.connected = True
+    fake._telem.north_m = 10.0
+    fake._telem.east_m = 4.0
+    fake._telem.heading_deg = 0.0
+    fake._telem.distance_scan_m = 2.0
+    fake._telem.distance_sensor_stream_alive = True
+    from weed_spray.backend.models import Detection as Det
+    from weed_spray.backend.models import FenceBox, MissionPhase
+
+    mission.state.phase = MissionPhase.scanning
+    mission.state.fence = FenceBox(north_m=20, south_m=-5, east_m=15, west_m=-15)
+    mission.state.detections = [
+        Det(id="y1", class_name="dandelion", north_m=10.0, east_m=4.0, conf=0.9)
+    ]
+
+    async def fake_view():
+        return {
+            "mode": "yolo",
+            "camera": True,
+            "detections": [
+                {
+                    "class": "dandelion",
+                    "conf": 0.9,
+                    "cx": 0.5,
+                    "cy": 0.5,
+                    "w": 0.2,
+                    "h": 0.2,
+                    "frame_w": 640,
+                    "frame_h": 480,
+                }
+            ],
+        }
+
+    monkeypatch.setattr(backend_main, "fetch_vision_view", fake_view)
+    rsp = await client.get("/vision/boxes")
+    assert rsp.status_code == 200
+    body = rsp.json()
+    assert body["boxes"][0]["id"] == "y1"
+    assert body["boxes"][0]["cx"] == 0.5
