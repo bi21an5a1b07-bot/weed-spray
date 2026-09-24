@@ -152,6 +152,9 @@ class Telemetry(BaseModel):
     ``distance_sensor_stream_alive`` means a positive finite DISTANCE_SENSOR
     sample arrived (even if filtered out of the short-range trust bar).
     ``distance_sensor_m`` is only the trusted spray-hover reading (<1 m).
+    ``distance_scan_m`` is a contemporaneous 1-5 m sample (scan height).
+    ``north_m`` / ``east_m`` are local NED from ``position_velocity_ned``.
+    ``ned_down_m`` is that same stream's down axis and is not AGL.
     """
 
     connected: bool = False
@@ -159,9 +162,13 @@ class Telemetry(BaseModel):
     in_air: bool = False
     lat: float | None = None
     lon: float | None = None
+    north_m: float | None = None
+    east_m: float | None = None
+    ned_down_m: float | None = None
     relative_alt_m: float | None = None
     heading_deg: float | None = None
     distance_sensor_m: float | None = None
+    distance_scan_m: float | None = None
     distance_sensor_missing: bool = True
     distance_sensor_stream_alive: bool = False
     pump_value: float = 0.0

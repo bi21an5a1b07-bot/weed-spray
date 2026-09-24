@@ -95,7 +95,7 @@ One plant. JSON field is `"class"` (alias of `class_name`). Fields: `id`, `class
 
 ### `class Telemetry`
 
-Last MAVSDK snapshot: `connected`, `armed`, `in_air`, `lat`, `lon`, `relative_alt_m`, `heading_deg`, `distance_sensor_m`, `distance_sensor_missing` (true when no usable short-range reading — typical on SIH, including dropped **≥ 1 m** bogus streams), `distance_sensor_stream_alive` (positive finite raw DISTANCE_SENSOR seen), `pump_value`, `flight_mode`, `rc_available`.
+Last MAVSDK snapshot: `connected`, `armed`, `in_air`, `lat`, `lon`, `north_m`, `east_m`, `ned_down_m` (local NED down, **not** AGL), `relative_alt_m`, `heading_deg`, `distance_sensor_m` (trusted spray hover, dropped at ≥ 1 m), `distance_scan_m` (1-5 m sample only when relative alt is in that same band), `distance_sensor_missing` (true when no usable short-range reading — typical on SIH, including dropped **≥ 1 m** bogus streams), `distance_sensor_stream_alive` (positive finite raw DISTANCE_SENSOR seen in the scan band), `pump_value`, `flight_mode`, `rc_available`.
 
 ### `class AppState`
 
@@ -160,10 +160,11 @@ If `on_failsafe` is set, await it. `kind` is a `PumpOffEvent.type`.
 | `_track_rc` | `rc_status` | After RC was seen once, disappearance fires `rc_loss` |
 | `_track_flight_mode` | `flight_mode` | After Offboard was seen, leaving it (except RTL/land/hold) fires `offboard_loss` |
 | `_track_position` | `position` | lat/lon/relative_alt_m |
+| `_track_local_ned` | `position_velocity_ned` | `north_m`, `east_m`, `ned_down_m` (not AGL) |
 | `_track_armed` | `armed` | `telemetry.armed` |
 | `_track_in_air` | `in_air` | used for RC-first takeoff |
 | `_track_heading` | `heading` | `heading_deg` |
-| `_track_distance` | `distance_sensor` | `apply_distance_sample` (non-mirror ≤5 m → stream alive; short-range trust → `distance_sensor_m`) |
+| `_track_distance` | `distance_sensor` | `apply_distance_sample` (1-5 m with relative alt in band → stream alive and `distance_scan_m`; short-range trust → `distance_sensor_m`) |
 
 #### `async Vehicle.upload_fence(box)`
 

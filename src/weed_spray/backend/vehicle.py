@@ -139,7 +139,9 @@ def apply_distance_sample(
     Short-range trust (``distance_sensor_m``) is unchanged (#12).
 
     ``distance_sensor_stream_alive`` marks a contemporaneous scan-height sample
-    (ds and relative_alt both in ``[stream_min_m, stream_max_m]``). Fail closed
+    (ds and relative_alt both in ``[stream_min_m, stream_max_m]``). The same
+    gate stores that reading on ``distance_scan_m``. A short-range hover sample
+    does not fill ``distance_scan_m``. Fail closed
     when ``relative_alt_m`` is None or still near hover while ds reads scan
     (lag unlock). Does **not** treat ds≈relative_alt as SIH-only — flat Gazebo
     belly lidar agrees with relative_alt too. SIH refuse is ``WEED_LIDAR_EXPECTED``.
@@ -163,6 +165,7 @@ def apply_distance_sample(
         return
     if stream_min_m <= value <= stream_max_m and stream_min_m <= rel <= stream_max_m:
         telem.distance_sensor_stream_alive = True
+        telem.distance_scan_m = value
 
 
 class Vehicle:
@@ -205,6 +208,7 @@ class Vehicle:
         # bot_files/px4_offboard.md: do not invent COM_* / NAV_RCL_ACT / COM_RCL_EXCEPT.
         self._tasks = [
             asyncio.create_task(self._track_position()),
+            asyncio.create_task(self._track_local_ned()),
             asyncio.create_task(self._track_armed()),
             asyncio.create_task(self._track_in_air()),
             asyncio.create_task(self._track_heading()),
@@ -254,6 +258,14 @@ class Vehicle:
                 FlightMode.HOLD,
             }:
                 await self._fire_failsafe("offboard_loss")
+
+    async def _track_local_ned(self) -> None:
+        """Store ``position_velocity_ned`` north/east. ``ned_down_m`` is not AGL."""
+        async for sample in self.drone.telemetry.position_velocity_ned():
+            pos = sample.position
+            self._telem.north_m = float(pos.north_m)
+            self._telem.east_m = float(pos.east_m)
+            self._telem.ned_down_m = float(pos.down_m)
 
     async def _track_position(self) -> None:
         """Update lat/lon/relative altitude from GLOBAL_POSITION."""
