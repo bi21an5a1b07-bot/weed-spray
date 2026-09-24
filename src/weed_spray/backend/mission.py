@@ -105,14 +105,14 @@ class Mission:
         """Project scan-time pixel rows into unconfirmed ``y*`` detections.
 
         Does nothing unless ``WEED_YOLO_GEOREFERENCE`` is on and the phase is
-        ``scanning``. Never sets ``confirmed``. Missing scan-height lidar or
+        ``scanning``. Never sets ``confirmed``. Missing or non-live scan-height lidar or
         an unset lens sets ``last_error`` and does not use baro or local z.
         A locked id (confirm or reject already recorded) does not move.
         """
         if not settings.yolo_georeference or self.state.phase != MissionPhase.scanning:
             return
         telem = self.vehicle.telemetry
-        if telem.distance_scan_m is None:
+        if not telem.distance_sensor_stream_alive or telem.distance_scan_m is None:
             self.state.last_error = "YOLO skipped: scan-height lidar missing"
             return
         if settings.cam_hfov_deg is None:

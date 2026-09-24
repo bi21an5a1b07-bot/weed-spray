@@ -47,6 +47,7 @@ def _mission(monkeypatch, **setting_overrides) -> Mission:
     vehicle._telem.east_m = 4.0
     vehicle._telem.heading_deg = 0.0
     vehicle._telem.distance_scan_m = 2.0
+    vehicle._telem.distance_sensor_stream_alive = True
     mission = Mission(vehicle)
     mission.state.phase = MissionPhase.scanning
     mission.state.fence = FenceBox(north_m=20, south_m=-5, east_m=15, west_m=-15)
@@ -145,6 +146,16 @@ def test_missing_lidar_or_hfov_skips_without_using_baro(monkeypatch):
     mission.observe_pixels([_pixel()])
     assert mission.state.detections == []
     assert "HFOV" in (mission.state.last_error or "")
+
+
+def test_sticky_scan_without_stream_alive_skips(monkeypatch):
+    """Stale distance_scan_m must not unlock georef when the stream is dead."""
+    mission = _mission(monkeypatch)
+    mission.vehicle._telem.distance_scan_m = 2.0
+    mission.vehicle._telem.distance_sensor_stream_alive = False
+    mission.observe_pixels([_pixel()])
+    assert mission.state.detections == []
+    assert "lidar" in (mission.state.last_error or "")
 
 
 def test_inject_w1_stays_beside_y1(monkeypatch):
