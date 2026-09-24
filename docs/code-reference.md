@@ -480,7 +480,7 @@ Print `bot_files/weeds_sources.md`. Does not download. Reminds the operator to c
 
 ### `missing_train_classes() -> list[str]`
 
-Names in `labels/train` with zero YOLO rows. A missing folder means every class.
+Class names with zero YOLO label rows **paired** to `images/train` (same stem pairing Ultralytics uses). Only `labels/train/<stem>.txt` whose stem matches an RGB file under `images/train` count; orphan label files without a matching image do **not** clear the gate. Comment/blank lines and ids outside `0..nc-1` are ignored. A missing labels folder means every class.
 
 ### `load_yolo()`
 
@@ -488,7 +488,7 @@ Imports Ultralytics `YOLO`. Tests replace it.
 
 ### `train(device, epochs, imgsz, model) -> int`
 
-Exit 2 if train or val has no images, or if any class has zero train boxes (names the class). Then loads YOLO.
+Exit 2 if train or val has no images, or if any class has zero **paired** train boxes (names the class; orphans ignored). Then loads YOLO.
 
 Run Ultralytics on `weeds.yaml`. Returns **2** if train/val is empty or `ultralytics` is missing (`uv sync --extra yolo`). Writes to `var/yolo/weeds`. Returns **0** on success.
 
