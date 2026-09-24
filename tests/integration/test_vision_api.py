@@ -1,18 +1,50 @@
 """Vision injector HTTP: frozen names, upsert, delete, 422 on unknown class."""
 
+import logging
+
 from fastapi.testclient import TestClient
 
+from weed_spray.vision import runtime
 from weed_spray.vision.main import app
 
 
-def test_health_names():
+def test_health_names(monkeypatch):
+    monkeypatch.delenv("WEED_YOLO_WEIGHTS", raising=False)
     with TestClient(app) as client:
         body = client.get("/health").json()
         assert body["ok"] is True
         assert body["mode"] == "injector"
+        assert body["weights"] is None
         assert body["names"]["0"] == "dandelion"
         assert body["names"]["2"] == "thistle"
         assert body["names"]["3"] == "mallow"
+
+
+def test_configure_logging_prints_missing_weights(monkeypatch, tmp_path, capsys):
+    missing = tmp_path / "no-such.pt"
+    monkeypatch.setenv("WEED_YOLO_WEIGHTS", str(missing))
+    runtime.reset_for_tests()
+    runtime.configure_logging()
+    runtime.note_configured_weights()
+    err = capsys.readouterr().err
+    assert f"WEED_YOLO_WEIGHTS {missing} is missing; staying injector" in err
+
+
+def test_missing_weights_stay_injector_and_do_not_start_runner(monkeypatch, tmp_path, caplog):
+    missing = tmp_path / "no-such.pt"
+    monkeypatch.setenv("WEED_YOLO_WEIGHTS", str(missing))
+    runtime.reset_for_tests()
+    with caplog.at_level(logging.INFO, logger="weed_spray.vision"):
+        with TestClient(app) as client:
+            first = client.get("/health").json()
+            second = client.get("/health").json()
+    assert first["ok"] is True
+    assert first["mode"] == "injector"
+    assert first["weights"] is None
+    assert second["mode"] == "injector"
+    assert runtime.runner_started() is False
+    notes = [rec.getMessage() for rec in caplog.records if "missing" in rec.getMessage()]
+    assert notes == [f"WEED_YOLO_WEIGHTS {missing} is missing; staying injector"]
 
 
 def test_inject_get_delete_and_reject_crabgrass():

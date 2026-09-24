@@ -24,3 +24,11 @@ Prefix `WEED_`. Defined in `weed_spray.backend.config.Settings`.
 | `WEED_SCAN_SPEED_M_S` | `2.0` | Reserved; path currently uses settle sleeps |
 
 Unknown PX4 enums (`COM_OF_LOSS_T`, Kakute MAIN vs AUX, DIS/FAIL µs) are **not** set from env. Operator/QGC owns those.
+
+## Vision worker
+
+Read by `weed-spray-vision`, not by `Settings`.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `WEED_YOLO_WEIGHTS` | empty | Empty → injector. A path that is not a file logs once and stays injector. A real file does not start a reader yet. |

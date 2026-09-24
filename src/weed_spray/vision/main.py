@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel, Field, field_validator
 
 from weed_spray.vision.classes import CLASSES, NAMES
+from weed_spray.vision.runtime import configure_logging, note_configured_weights
 
 log = logging.getLogger("weed_spray.vision")
 
@@ -45,7 +46,8 @@ class InjectRequest(BaseModel):
 
 @app.get("/health")
 async def health():
-    """Liveness; ``names`` is the frozen id→class map. ``weights`` is None in v1."""
+    """Liveness. Missing ``WEED_YOLO_WEIGHTS`` stays injector and does not start YOLO."""
+    note_configured_weights()
     return {
         "ok": True,
         "mode": "injector",
@@ -83,6 +85,7 @@ async def clear():
 
 def run() -> None:
     """CLI entry ``weed-spray-vision``."""
+    configure_logging()
     uvicorn.run(
         "weed_spray.vision.main:app",
         host="127.0.0.1",
