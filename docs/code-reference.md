@@ -369,6 +369,28 @@ Keep ids in `NAMES` with `conf >= conf_min` and short side `min(w, h) * imgsz` â
 
 ---
 
+## `src/weed_spray/vision/runtime.py`
+
+Injector gate for `WEED_YOLO_WEIGHTS`. Does not load a model.
+
+### `runner_started() -> bool`
+
+False until a later story starts the RTSP reader.
+
+### `reset_for_tests()`
+
+Clears the one-shot missing-file log and the runner flag.
+
+### `configure_logging()`
+
+Attach one stderr handler at INFO so a missing-weights line is visible under uvicorn.
+
+### `note_configured_weights()`
+
+Empty env: no log. Path is not a file: log once and stay injector. Path is a file: no reader.
+
+---
+
 ## `src/weed_spray/vision/main.py`
 
 Detection injector / YOLO stub on `:8090`. Injected boxes are the v1 pass. In-memory `_boxes` list.
@@ -389,7 +411,7 @@ Pydantic validator. Rejects crabgrass / other_weed / anything not in `CLASSES`.
 
 | Handler | Path | Behavior |
 |---|---|---|
-| `health` | `GET /health` | `mode=injector`, frozen `names`, `weights=None`, `count` |
+| `health` | `GET /health` | `mode=injector`, frozen `names`, `weights=None`, `count`. Calls `note_configured_weights`: a missing `WEED_YOLO_WEIGHTS` file logs once and does not start a runner. |
 | `detections` | `GET /detections` | Current box list |
 | `inject` | `POST /inject` | Upsert by id; does not confirm spray |
 | `clear` | `DELETE /detections` | Drop all boxes |
