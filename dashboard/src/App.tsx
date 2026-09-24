@@ -51,8 +51,27 @@ const empty: State = {
   detections: [],
 };
 
+/** One camera-plane box from GET /vision/boxes. No north/east. */
+type PixelBox = {
+  id?: string;
+  class?: string;
+  conf?: number;
+  cx: number;
+  cy: number;
+  w: number;
+  h: number;
+};
+
 /** Same-origin HLS of the MediaMTX file loop. WebRTC ICE fails from Windows→WSL. */
-function CamMonitor({ rtsp }: { rtsp: string }) {
+function CamMonitor({
+  rtsp,
+  boxes,
+  onPick,
+}: {
+  rtsp: string;
+  boxes: PixelBox[];
+  onPick: (id: string) => void;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     const video = videoRef.current;
@@ -73,9 +92,39 @@ function CamMonitor({ rtsp }: { rtsp: string }) {
   return (
     <section className="cam">
       <h2>Camera</h2>
-      <video ref={videoRef} muted autoPlay playsInline controls />
+      <div className="cam-frame">
+        <video ref={videoRef} muted autoPlay playsInline controls />
+        {boxes.map((box, index) => {
+          const style = {
+            left: `${(box.cx - box.w / 2) * 100}%`,
+            top: `${(box.cy - box.h / 2) * 100}%`,
+            width: `${box.w * 100}%`,
+            height: `${box.h * 100}%`,
+          };
+          const label = `${box.class ?? "weed"}${box.conf != null ? ` ${box.conf.toFixed(2)}` : ""}`;
+          if (box.id) {
+            return (
+              <button
+                key={box.id}
+                type="button"
+                className="box"
+                style={style}
+                onClick={() => onPick(box.id as string)}
+              >
+                {label}
+              </button>
+            );
+          }
+          return (
+            <span key={`${label}-${index}`} className="box" style={style}>
+              {label}
+            </span>
+          );
+        })}
+      </div>
       <p className="meta">
-        HLS /hls/cam/ · RTSP {rtsp || "rtsp://127.0.0.1:8554/cam"}
+        HLS lags RTSP, so a rectangle is not frame-locked. HLS /hls/cam/ · RTSP{" "}
+        {rtsp || "rtsp://127.0.0.1:8554/cam"}
       </p>
     </section>
   );
@@ -102,6 +151,7 @@ export default function App() {
   const [armSource, setArmSource] = useState<"dashboard" | "rc">("dashboard");
   const [err, setErr] = useState<string | null>(null);
   const [preflight, setPreflight] = useState<string | null>(null);
+  const [boxes, setBoxes] = useState<PixelBox[]>([]);
 
   useEffect(() => {
     fetch("/api/preflight")
@@ -112,6 +162,26 @@ export default function App() {
         ),
       )
       .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    let stop = false;
+    const tick = () => {
+      fetch("/api/vision/boxes")
+        .then((r) => r.json())
+        .then((body) => {
+          if (!stop) setBoxes(body.boxes ?? []);
+        })
+        .catch(() => {
+          if (!stop) setBoxes([]);
+        });
+    };
+    tick();
+    const id = setInterval(tick, 500);
+    return () => {
+      stop = true;
+      clearInterval(id);
+    };
   }, []);
 
   useEffect(() => {
@@ -170,7 +240,7 @@ export default function App() {
       {preflight ? <p className="meta">{preflight}</p> : null}
       {error ? <p className="meta">{error}</p> : null}
 
-      <CamMonitor rtsp={state.rtsp_url} />
+      <CamMonitor rtsp={state.rtsp_url} boxes={boxes} onPick={toggle} />
 
       <div className="row">
         <label>

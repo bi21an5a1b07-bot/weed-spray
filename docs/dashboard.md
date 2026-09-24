@@ -26,6 +26,8 @@ Telemetry line: phase, MAV up/down, armed, relative altitude, lidar (`missing` o
 
 Camera: `<video>` + `hls.js` on `/hls/cam/index.m3u8`. Vite proxies `/hls` to MediaMTX `:8888` and strips the `Secure` cookie so HTTP localhost can play. Direct WebRTC on `:8889` fails from a Windows browser (ICE / “peer connection closed”). RTSP `8554/cam` stays the backend/YOLO pull.
 
+The page polls `GET /api/vision/boxes` every 500 ms and draws class and confidence on the video. The line under the video says HLS lags RTSP. A box with an id selects that table row. It does not confirm. Injector rows have no pixel box, so the overlay stays empty.
+
 On load, `GET /api/preflight` is fetched only to confirm the backend is up; the banner text is hardcoded (not legal advice). State is pushed over WebSocket `/ws`; if the socket errors, the UI polls `GET /api/state` every 500 ms.
 
 ## Types in `App.tsx`

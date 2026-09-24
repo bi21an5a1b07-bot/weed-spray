@@ -109,6 +109,51 @@ async def inject(req: InjectRequest):
     return mission.snapshot().model_dump(mode="json", by_alias=True)
 
 
+async def fetch_vision_view() -> dict:
+    """Read vision ``/health`` and ``/detections``. Raises ``httpx.HTTPError`` if down."""
+    async with httpx.AsyncClient(timeout=1.0) as client:
+        health = await client.get(f"{settings.vision_url}/health")
+        health.raise_for_status()
+        listed = await client.get(f"{settings.vision_url}/detections")
+        listed.raise_for_status()
+    health_body = health.json()
+    rows = listed.json().get("detections", [])
+    return {
+        "mode": health_body.get("mode", "injector"),
+        "camera": bool(health_body.get("camera")),
+        "detections": rows if isinstance(rows, list) else [],
+    }
+
+
+@app.get("/vision/boxes")
+async def vision_boxes():
+    """Same-origin pixel boxes for the dashboard. Injector rows without ``cx`` are dropped.
+
+    A dead vision worker is an empty injector view, not an error page. Clicking
+    a box in the UI does not confirm a spray.
+    """
+    try:
+        view = await fetch_vision_view()
+    except httpx.HTTPError:
+        return {"mode": "injector", "camera": False, "boxes": []}
+    boxes = []
+    for row in view["detections"]:
+        if "cx" not in row:
+            continue
+        item = {
+            "class": row.get("class"),
+            "conf": row.get("conf"),
+            "cx": row.get("cx"),
+            "cy": row.get("cy"),
+            "w": row.get("w"),
+            "h": row.get("h"),
+        }
+        if row.get("id"):
+            item["id"] = row["id"]
+        boxes.append(item)
+    return {"mode": view["mode"], "camera": view["camera"], "boxes": boxes}
+
+
 @app.post("/confirm")
 async def confirm(req: ConfirmRequest):
     """Human (or harness-as-human) confirm/reject. Required before /visit."""
