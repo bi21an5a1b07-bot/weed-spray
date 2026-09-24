@@ -460,7 +460,7 @@ Train YOLO on `weeds/weeds.yaml`. Does **not** download public archives.
 
 ### `IMAGE_EXTS`
 
-`{".jpg", ".jpeg", ".png", ".webp"}`.
+Frozen set matching Ultralytics 8.4.135 `IMG_FORMATS`: `.avif`, `.bmp`, `.dng`, `.heic`, `.heif`, `.jp2`, `.jpeg`, `.jpg`, `.mpo`, `.png`, `.tif`, `.tiff`, `.webp`. Used by `_count_images` and `_train_image_stems` / `missing_train_classes`.
 
 ### `repo_root() -> Path`
 
