@@ -66,6 +66,14 @@ def project_nadir(
 
     if fence is not None:
         north_max, south_min, east_max, west_min = fence
-        if north > north_max or north < south_min or east > east_max or east < west_min:
+        # Inclusive edges + float from tan(hfov/2): a hand-calc metre edge must
+        # not trip strict >/< (e.g. east ≈ 0.20000000000000015 vs 0.2).
+        eps = 1e-9
+        if (
+            north > north_max + eps
+            or north < south_min - eps
+            or east > east_max + eps
+            or east < west_min - eps
+        ):
             return None
     return (north, east)
