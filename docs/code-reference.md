@@ -355,6 +355,20 @@ Turf, dirt, crabgrass, plantain, and “other_weed” are unlabeled background. 
 
 ---
 
+## `src/weed_spray/vision/boxes.py`
+
+Pixel observations from a detector stand-in. Does not import Ultralytics. No north/east.
+
+### `class RawBox`
+
+Frozen detector row: `class_id`, `conf`, normalized `cx`/`cy`/`w`/`h`.
+
+### `parse_boxes(boxes, *, conf_min, imgsz) -> list[dict]`
+
+Keep ids in `NAMES` with `conf >= conf_min` and short side `min(w, h) * imgsz` ≥ 20 px. Unknown indexes are dropped. Each dict is `{class, conf, cx, cy, w, h}`. Empty input returns `[]`.
+
+---
+
 ## `src/weed_spray/vision/main.py`
 
 Detection injector / YOLO stub on `:8090`. Injected boxes are the v1 pass. In-memory `_boxes` list.
