@@ -105,6 +105,21 @@ async def clear():
     return {"detections": []}
 
 
+def clear_reader_after_drive(*, weights: str, status: object) -> None:
+    """Drop sticky pixel rows when the RTSP/YOLO reader stops for any reason.
+
+    Clean EOF returns ``ok=True``; load errors return ``ok=False``. Either way
+    ``GET /detections`` must not keep serving the last frame, or georef will
+    keep projecting stale ``y*`` hits while scanning.
+    """
+    from weed_spray.vision.reader import CameraStatus
+
+    cam = status if isinstance(status, CameraStatus) else None
+    if cam is not None and not cam.ok:
+        log.info("camera down: %s", cam.error)
+    attach_reader(weights=weights, rows=[], camera_ok=False)
+
+
 def _open_yolo_if_configured() -> None:
     """If weights exist, serve YOLO mode. Import Ultralytics only in that branch.
 
@@ -129,17 +144,20 @@ def _open_yolo_if_configured() -> None:
         def publish(rows: list[dict]) -> None:
             attach_reader(weights=raw, rows=rows, camera_ok=True)
 
-        status = drive_rtsp(
-            raw,
-            url,
-            publish=publish,
-            conf_min=conf,
-            imgsz=imgsz,
-            device=device,
-        )
-        if not status.ok:
-            log.info("camera down: %s", status.error)
+        try:
+            status = drive_rtsp(
+                raw,
+                url,
+                publish=publish,
+                conf_min=conf,
+                imgsz=imgsz,
+                device=device,
+            )
+        except Exception as exc:  # noqa: BLE001  never leave sticky rows if drive escapes
+            log.info("camera down: %s", exc)
             attach_reader(weights=raw, rows=[], camera_ok=False)
+            return
+        clear_reader_after_drive(weights=raw, status=status)
 
     threading.Thread(target=_thread, name="yolo-rtsp", daemon=True).start()
 

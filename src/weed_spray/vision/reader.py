@@ -103,9 +103,14 @@ def drive_rtsp(
     Returns:
         Camera status after the stream ends or fails.
     """
-    from ultralytics import YOLO
+    try:
+        from ultralytics import YOLO
 
-    model = YOLO(weights)
+        model = YOLO(weights)
+    except Exception as exc:  # noqa: BLE001  bad weights must not kill the daemon
+        publish([])
+        return CameraStatus(ok=False, error=str(exc))
+
     pending: list[RawBox] = []
     last = 0.0
 
