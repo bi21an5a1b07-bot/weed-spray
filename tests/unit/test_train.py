@@ -79,3 +79,102 @@ def test_train_calls_yolo_when_every_class_has_a_box(tmp_path, monkeypatch):
     assert train_mod.main([]) == 0
     assert called["model"] == "yolov8n.pt"
     assert called["data"] == str(tmp_path / "weeds" / "weeds.yaml")
+
+
+def test_missing_train_classes_ignores_orphan_labels(tmp_path, monkeypatch):
+    """Orphan labels/train/*.txt without a paired image must not clear the gate.
+
+    Ultralytics only stem-pairs labels to images/train/*; leftovers with ids
+    0-3 must not make missing_train_classes return [].
+    """
+    images = tmp_path / "weeds" / "dataset" / "images" / "train"
+    labels = tmp_path / "weeds" / "dataset" / "labels" / "train"
+    images.mkdir(parents=True)
+    labels.mkdir(parents=True)
+    # Paired negative-only sample (YOLO would train this as empty).
+    (images / "a.jpg").write_bytes(b"x")
+    (labels / "a.txt").write_text("")
+    # Orphan label with all four classes — no images/train/orphan.*
+    (labels / "orphan.txt").write_text(
+        "0 0.5 0.5 0.2 0.2\n1 0.4 0.4 0.2 0.2\n2 0.3 0.3 0.2 0.2\n3 0.2 0.2 0.2 0.2\n"
+    )
+    monkeypatch.setattr(train_mod, "ROOT", tmp_path)
+    missing = train_mod.missing_train_classes()
+    assert missing == ["dandelion", "clover", "thistle", "mallow"]
+
+
+def test_missing_train_classes_counts_paired_labels_only(tmp_path, monkeypatch):
+    """Paired image+label rows still clear those classes from missing."""
+    images = tmp_path / "weeds" / "dataset" / "images" / "train"
+    labels = tmp_path / "weeds" / "dataset" / "labels" / "train"
+    images.mkdir(parents=True)
+    labels.mkdir(parents=True)
+    (images / "a.jpg").write_bytes(b"x")
+    (labels / "a.txt").write_text(
+        "0 0.5 0.5 0.2 0.2\n1 0.4 0.4 0.2 0.2\n2 0.3 0.3 0.2 0.2\n3 0.2 0.2 0.2 0.2\n"
+    )
+    # Orphan with nothing useful — must not matter either way when paired is complete.
+    (labels / "orphan.txt").write_text("0 0.1 0.1 0.1 0.1\n")
+    monkeypatch.setattr(train_mod, "ROOT", tmp_path)
+    assert train_mod.missing_train_classes() == []
+
+
+def test_train_refuses_when_only_orphan_labels_have_classes(tmp_path, monkeypatch, capsys):
+    """train() must exit 2 if only unpaired orphans carry class rows."""
+    for split in ("train", "val"):
+        (tmp_path / "weeds" / "dataset" / "images" / split).mkdir(parents=True)
+        (tmp_path / "weeds" / "dataset" / "labels" / split).mkdir(parents=True)
+        (tmp_path / "weeds" / "dataset" / "images" / split / "a.jpg").write_bytes(b"x")
+    (tmp_path / "weeds" / "dataset" / "labels" / "train" / "a.txt").write_text("")
+    (tmp_path / "weeds" / "dataset" / "labels" / "train" / "orphan.txt").write_text(
+        "0 0.5 0.5 0.2 0.2\n1 0.4 0.4 0.2 0.2\n2 0.3 0.3 0.2 0.2\n3 0.2 0.2 0.2 0.2\n"
+    )
+    (tmp_path / "weeds" / "dataset" / "labels" / "val" / "a.txt").write_text("0 0.5 0.5 0.2 0.2\n")
+    (tmp_path / "weeds" / "weeds.yaml").write_text("names: dandelion clover thistle mallow\n")
+    monkeypatch.setattr(train_mod, "ROOT", tmp_path)
+    monkeypatch.setattr(train_mod, "YAML", tmp_path / "weeds" / "weeds.yaml")
+    assert train_mod.main([]) == 2
+    err = capsys.readouterr().err
+    assert "clover" in err
+    assert "mallow" in err
+
+
+def test_missing_train_classes_counts_ultralytics_bmp_pair(tmp_path, monkeypatch):
+    """Paired .bmp + labels must clear the gate (Ultralytics IMG_FORMATS includes bmp).
+
+    Failure mode BugScout filed on #60: a.jpg (empty) + b.bmp with ids 0-3 must not
+    treat b as orphan and exit-2 every class — Ultralytics would stem-pair b.bmp.
+    """
+    images = tmp_path / "weeds" / "dataset" / "images" / "train"
+    labels = tmp_path / "weeds" / "dataset" / "labels" / "train"
+    images.mkdir(parents=True)
+    labels.mkdir(parents=True)
+    (images / "a.jpg").write_bytes(b"x")
+    (labels / "a.txt").write_text("")
+    (images / "b.bmp").write_bytes(b"BM")
+    (labels / "b.txt").write_text(
+        "0 0.5 0.5 0.2 0.2\n1 0.4 0.4 0.2 0.2\n2 0.3 0.3 0.2 0.2\n3 0.2 0.2 0.2 0.2\n"
+    )
+    monkeypatch.setattr(train_mod, "ROOT", tmp_path)
+    assert train_mod.missing_train_classes() == []
+
+
+def test_missing_train_classes_ignores_non_ultralytics_image_ext(tmp_path, monkeypatch):
+    """Label paired only to a non-IMG_FORMATS file (e.g. .xyz) stays orphan."""
+    images = tmp_path / "weeds" / "dataset" / "images" / "train"
+    labels = tmp_path / "weeds" / "dataset" / "labels" / "train"
+    images.mkdir(parents=True)
+    labels.mkdir(parents=True)
+    (images / "a.jpg").write_bytes(b"x")
+    (labels / "a.txt").write_text("")
+    (images / "ghost.xyz").write_bytes(b"nope")
+    (labels / "ghost.txt").write_text(
+        "0 0.5 0.5 0.2 0.2\n1 0.4 0.4 0.2 0.2\n2 0.3 0.3 0.2 0.2\n3 0.2 0.2 0.2 0.2\n"
+    )
+    monkeypatch.setattr(train_mod, "ROOT", tmp_path)
+    assert train_mod.missing_train_classes() == [
+        "dandelion",
+        "clover",
+        "thistle",
+        "mallow",
+    ]
