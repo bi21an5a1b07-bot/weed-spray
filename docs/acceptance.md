@@ -212,20 +212,21 @@ Do not enable this on SIH. `observe_pixels` does not read `WEED_LIDAR_EXPECTED`.
 On Gazebo, backend env (same process as `make backend-gz`):
 
 - `WEED_YOLO_GEOREFERENCE=1`
+- `WEED_CAM_TILT_DEG=15` — must match the SDF mount (`mono_cam` pitch 0.2618 rad forward). Same value as §5. Do **not** set `WEED_CAM_TILT_DEG=90` while the SDF/camera stay 15° forward: that desyncs the gate vs geometry and makes visit/spray aim under the aircraft instead of the weed ~`h/tan(15°)` ahead.
 - `WEED_CAM_HFOV_DEG` set from the `mono_cam` model inside the image you actually started. `sitl/gz/models/x500_lidar_down/model.sdf` only includes `model://mono_cam`. It does not state a field of view. The unit tests use 90° as a hand calculation. That number is not the vehicle lens. If you have not read the model, leave the variable unset.
 
-Unset lens or no live scan-height lidar: scan still finishes, no `y*` rows, and `last_error` says the lidar is missing or `camera HFOV unset`. It must not mention substituting relative altitude or local `z`.
+Unset tilt, unset lens, or no live scan-height lidar: scan still finishes, no `y*` rows, and `last_error` says the lidar is missing, `camera tilt unset`, or `camera HFOV unset`. It must not mention substituting relative altitude or local `z`.
 
 During **scan** only, with `telemetry.distance_sensor_stream_alive` true and `distance_scan_m` in 1–5 m (about the 2.0 m lawnmower height, not the 0.27 m hover reading):
 
 - New rows are `y1`, `y2`, … unconfirmed. They do not replace an injected `w1`.
 - Two close hits of the same class (within `WEED_YOLO_ASSOC_M`, default 0.35 m) stay one id. A different class, or the same class farther than that, is a second id.
-- Image center maps to the vehicle's `north_m` / `east_m`. Image-right is body-right (+east when heading is 0). Image-down is aft. That second sign is the function's convention. Before any `y*` row is sprayed, check it once against a known object in the Gazebo frame. If the sign is wrong, fix the projection; do not add a hidden flip.
+- Place-check uses the **forward** ground hit from `project_oblique`, not nadir under the vehicle. Image center is **not** the vehicle's `north_m` / `east_m`: at tilt 15° and height `h` it is about `h / tan(15°)` metres ahead along heading (~7.46 m at `h` = 2 m). Image-right is body-right (+east when heading is 0). Image-down pitches with the camera (aft only when tilt is 90° / nadir). Confirm that image-up matches the nose against a known object in one Gazebo frame before any `y*` row is sprayed. If the sign is wrong, fix the projection; do not add a hidden flip.
 - A point outside the typed fence is dropped.
 - Confirm one id. Later frames must not move it, and `confirmed` stays true. A rejected id stays unconfirmed.
 - After the phase leaves `scanning`, new pixels add no ids.
 - Kill during scan cancels the poll. The lawnmower does not abort just because the vision worker is down (log: `vision poll failed`).
-- `GET /vision/boxes` adds `id` on a pixel that matches a `y*` row, and only while lidar, lens, and pose are present. Clicking that rectangle selects the same table row as the checkbox. **Confirm selected** is still the button that allows a visit. Unconfirmed ids do not pulse.
+- `GET /vision/boxes` adds `id` on a pixel that matches a `y*` row, and only while lidar, lens, tilt, and pose are present. Clicking that rectangle selects the same table row as the checkbox. **Confirm selected** is still the button that allows a visit. Unconfirmed ids do not pulse.
 
 Hover trust is unchanged: a sample at or above 1 m does not set `distance_sensor_m`. A sample outside the 1–5 m scan band clears `distance_scan_m`. Do not georeference from a stale scan height after the stream goes quiet.
 
