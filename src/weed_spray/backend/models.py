@@ -155,6 +155,7 @@ class Telemetry(BaseModel):
     ``distance_scan_m`` is a contemporaneous 1-5 m sample (scan height).
     ``north_m`` / ``east_m`` are local NED from ``position_velocity_ned``.
     ``ned_down_m`` is that same stream's down axis and is not AGL.
+    ``vn_m_s`` / ``ve_m_s`` are horizontal velocity. Down velocity is not stored.
     """
 
     connected: bool = False
@@ -165,6 +166,8 @@ class Telemetry(BaseModel):
     north_m: float | None = None
     east_m: float | None = None
     ned_down_m: float | None = None
+    vn_m_s: float | None = None
+    ve_m_s: float | None = None
     relative_alt_m: float | None = None
     heading_deg: float | None = None
     distance_sensor_m: float | None = None

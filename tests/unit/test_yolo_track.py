@@ -1,5 +1,7 @@
 """Scan-time YOLO tracks. FakeVehicle only. Inject is not confirm."""
 
+import math
+
 import pytest
 
 from tests.fakes import FakeVehicle
@@ -13,6 +15,7 @@ def _settings(**kwargs) -> Settings:
     base = dict(
         yolo_georeference=True,
         cam_hfov_deg=90.0,
+        cam_tilt_deg=90.0,
         yolo_assoc_m=0.35,
         yolo_conf=0.5,
         yolo_imgsz=640,
@@ -52,6 +55,24 @@ def _mission(monkeypatch, **setting_overrides) -> Mission:
     mission.state.phase = MissionPhase.scanning
     mission.state.fence = FenceBox(north_m=20, south_m=-5, east_m=15, west_m=-15)
     return mission
+
+
+def test_unset_tilt_does_not_place_a_plant(monkeypatch):
+    mission = _mission(monkeypatch, cam_tilt_deg=None)
+    mission.observe_pixels([_pixel()])
+    assert mission.state.detections == []
+    assert "tilt" in (mission.state.last_error or "")
+
+
+def test_forward_tilt_stores_the_ground_point_ahead(monkeypatch):
+    mission = _mission(monkeypatch, cam_tilt_deg=15.0)
+    mission.observe_pixels([_pixel()])
+    det = mission.state.detections[0]
+    assert det.confirmed is False
+    assert det.id == "y1"
+    # 2 m scan height / tan(15°) forward of the vehicle at north 10, heading 0.
+    assert det.north_m == pytest.approx(10.0 + 2.0 / math.tan(math.radians(15.0)))
+    assert det.east_m == pytest.approx(4.0)
 
 
 def test_flag_off_does_not_copy_pixels(monkeypatch):

@@ -23,7 +23,10 @@ Prefix `WEED_`. Defined in `weed_spray.backend.config.Settings`.
 | `WEED_LAWNMOWER_SPACING_M` | `4.0` | Row spacing in local east |
 | `WEED_SCAN_SPEED_M_S` | `2.0` | Reserved; path currently uses settle sleeps |
 | `WEED_YOLO_GEOREFERENCE` | `false` | During scan only, project vision pixels into unconfirmed `y*` rows. Off does not copy pixels into the mission |
-| `WEED_CAM_HFOV_DEG` | unset | Horizontal FOV in degrees. Required when georeference is on. Unset skips the frame. Do not invent this |
+| `WEED_CAM_HFOV_DEG` | unset | Horizontal FOV in degrees. Required when georeference is on. Unset skips the frame. Gazebo `mono_cam` in image `px4io/px4-sitl-gazebo` is **1.74 rad (99.7°)**, 1280×960 (`/opt/px4-gazebo/share/gz/models/mono_cam/model.sdf`). That citation is not a default. Do not copy the unit-test 90° |
+| `WEED_CAM_TILT_DEG` | unset | Depression below the horizon. Unset skips georeference. 90 is straight down. The Gazebo overlay is **15** (pose pitch 0.2618 rad). Not a PX4 parameter |
+| `WEED_ARRIVAL_TOLERANCE_M` | `0.5` | Hover descent waits until horizontal position is this close to the ground point when tilt is below 80°. Unset tilt or 90° does not add that wait |
+| `WEED_CLOSING_SPEED_MIN_M_S` | `0.2` | Closing speed at or below this is not an approach. No arrival time is invented |
 | `WEED_YOLO_ASSOC_M` | `0.35` | Same-class match radius in metres |
 | `WEED_YOLO_CONF` | `0.5` | Drop pixel rows below this |
 | `WEED_YOLO_IMGSZ` | `640` | Inference size for the 20 px short-side rule |
@@ -36,4 +39,8 @@ Read by `weed-spray-vision`, not by `Settings`.
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `WEED_YOLO_WEIGHTS` | empty | Empty → injector. A path that is not a file logs once and stays injector. A real file does not start a reader yet. |
+| `WEED_YOLO_WEIGHTS` | empty | Empty → injector. A path that is not a file logs once and stays injector. A real file switches to `yolo`: without the `yolo` extra, `camera` is false and the box list is empty; with the extra, one RTSP reader starts. |
+| `WEED_RTSP_URL` | `rtsp://127.0.0.1:8554/cam` | Same URL the backend uses. Read here only when a reader starts. |
+| `WEED_YOLO_DEVICE` | `cpu` | Ultralytics device. Set `0` on the GPU. |
+| `WEED_YOLO_CONF` | `0.5` | Detector floor inside the reader. The backend has its own `WEED_YOLO_CONF` for georeference. |
+| `WEED_YOLO_IMGSZ` | `640` | Reader inference size. The backend has its own `WEED_YOLO_IMGSZ` for the 20 px rule. |

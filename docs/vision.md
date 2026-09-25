@@ -24,7 +24,9 @@ uv sync --extra yolo
 WEED_YOLO_WEIGHTS=var/yolo/weeds/weights/best.pt uv run weed-spray-vision
 ```
 
-Georeference stays off here. The backend copies pixels into the mission only when `WEED_YOLO_GEOREFERENCE=1` during scan. `weed-spray-train` refuses to run on an empty `weeds/dataset/`, and it also refuses when any of the four classes has zero label rows in train. Print those counts before trusting a live run. Clover may be absent from the backyard clip; do not describe that class as detected.
+The Gazebo scan camera looks forward and 15° down. The backend copies pixels into the mission only when `WEED_YOLO_GEOREFERENCE=1` during a Gazebo (or hardware) scan, with live scan-height lidar, `WEED_CAM_TILT_DEG`, and `WEED_CAM_HFOV_DEG`. The sourced Gazebo lens is 99.7° (1.74 rad), not the unit-test 90°. The stored point is the ground hit ahead of the aircraft. Hover descent waits until the vehicle is within 0.5 m of that point. Do not turn georeference on for SIH. How to check each mode: [acceptance.md](acceptance.md#vision-and-georeference).
+
+`weed-spray-train` refuses an empty `weeds/dataset/`, and it refuses when any of the four classes has zero label rows paired to an image in train. An orphan label file does not count. Clover may be absent from the backyard clip; do not describe that class as detected.
 
 ## Training (optional)
 

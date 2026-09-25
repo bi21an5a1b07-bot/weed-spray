@@ -259,7 +259,9 @@ Merge detections by id. Raises `ValueError` if `class` is outside `{dandelion, c
 
 #### `Mission.observe_pixels(pixels)`
 
-When `WEED_YOLO_GEOREFERENCE` is on and phase is `scanning`, project pixel rows (`cx`/`cy`, no north/east required) through `project_nadir` using `distance_scan_m` and `WEED_CAM_HFOV_DEG`. Same-class hits within `WEED_YOLO_ASSOC_M` share a `y*` id (median of the last few). Confirm or reject locks the position. Never sets `confirmed`. Missing lidar or unset HFOV sets `last_error` and does not use `relative_alt_m` or `ned_down_m`. Off, or any other phase: no new rows.
+When `WEED_YOLO_GEOREFERENCE` is on and phase is `scanning`, project pixel rows through `project_oblique` using `distance_scan_m`, `WEED_CAM_HFOV_DEG`, and `WEED_CAM_TILT_DEG`. The stored point is the ground hit, which is ahead of the vehicle when the camera looks forward. Same-class hits within `WEED_YOLO_ASSOC_M` share a `y*` id. Confirm or reject locks the position. Never sets `confirmed`. Missing lidar, unset HFOV, or unset tilt sets `last_error` and does not use `relative_alt_m` or `ned_down_m`. Off, or any other phase: no new rows.
+
+On a visit, if tilt is set and below 80°, hover descent waits until `wait_over_target` says the vehicle is within `WEED_ARRIVAL_TOLERANCE_M` of that ground point. A timeout skips the descent and does not pulse. Tilt unset or 90° does not add the wait.
 
 #### `Mission.confirm(req)`
 
@@ -384,6 +386,14 @@ Image-right is body-right (+east at heading 0). Image-down is aft (-north at hea
 ### `project_nadir(...) -> tuple[float, float] | None`
 
 Args: normalized center, frame size, `hfov_deg`, `height_m`, vehicle north/east, heading degrees, optional fence `(north, south, east, west)`. `None` when height or FOV is missing, the center is outside 0-1, or the point is outside the fence. Image center returns the vehicle point.
+
+### `project_oblique(...) -> tuple[float, float] | None`
+
+Same arguments as `project_nadir` plus `tilt_deg` (depression below the horizon). 90 matches `project_nadir`. A center pixel at tilt α and height `h` is `h / tan(α)` metres forward. A horizontal ray, or missing tilt, returns `None`.
+
+### `arrival_time_s(...) -> float | None`
+
+`|D| / closing speed` from horizontal velocity toward the plant. Already there returns `0`. Stopped, receding, or slower than `min_closing_m_s` (default 0.2) returns `None`. Down velocity is not an input.
 
 ---
 

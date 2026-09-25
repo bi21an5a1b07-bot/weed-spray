@@ -64,16 +64,24 @@
         <visualize>true</visualize>
       </sensor>
     </link>
-    <!-- Downward mono camera (from x500_mono_cam_down) — GstCameraSystem → UDP RTP 5600 -->
+    <!-- Scan camera: forward and 15° below the horizon. Not nadir.
+         mono_cam optical axis is the link +X (sensor pose 0 in
+         px4io/px4-sitl-gazebo:/opt/px4-gazebo/share/gz/models/mono_cam/model.sdf).
+         Pitch 0 keeps +X forward. Pitch +0.2618 rad (15°) depresses +X toward
+         the ground. That mount is WEED_CAM_TILT_DEG=15. Not a PX4 parameter.
+         Lens: same file, <horizontal_fov>1.74</horizontal_fov> radians = 99.7°.
+         Image 1280x960. Do not copy the unit-test 90° lens. Georeference stays
+         off until WEED_CAM_HFOV_DEG is set to that sourced value.
+         GstCameraSystem → UDP RTP 5600. -->
     <include merge='true'>
       <uri>model://mono_cam</uri>
-      <pose>0 0 .10 0 1.5707 0</pose>
+      <pose>0.12 0 0.05 0 0.2618 0</pose>
       <name>mono_cam</name>
     </include>
     <joint name="CameraJoint" type="fixed">
       <parent>base_link</parent>
       <child>camera_link</child>
-      <pose relative_to="base_link">0 0 0 0 1.5707 0</pose>
+      <pose relative_to="base_link">0.12 0 0.05 0 0.2618 0</pose>
     </joint>
   </model>
 </sdf>

@@ -46,10 +46,12 @@ make accept
 # same as: uv run weed-spray-accept --out var/last-run.md
 ```
 
-Grades `bot_files/sitl_loop.md`. SIH hover step is expected to fail without a rangefinder.
+Grades `bot_files/sitl_loop.md`. SIH hover step is expected to fail without a rangefinder. Gazebo (`make sitl-gz` + `make backend-gz`) is the path that can pass step 7.
+
+`make accept` does not start a detector. Vision modes, the overlay, georeference, and the train gate have their own checks in [acceptance.md](acceptance.md#vision-and-georeference).
 
 ## What is not tested here
 
-- Browser E2E (Playwright)
+- Browser E2E (Playwright). The overlay click is a manual check.
 - Real Kakute / USB CDC
-- Ultralytics training (dataset empty by design)
+- A full Ultralytics training run (the empty-class and orphan-label gates are unit-tested; training itself is operator-run)
