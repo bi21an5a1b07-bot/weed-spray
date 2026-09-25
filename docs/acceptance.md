@@ -11,7 +11,7 @@ Remote AWS EC2 operator host path (SprayPO start/stop, $10/mo cap): [acceptance-
 | Path | How | Accept bar today |
 |---|---|---|
 | **SIH (default)** | `make sitl` (`compose.yaml`) | Exit `1`; step 7 missing / fail — honest SIH bar |
-| **Gazebo (opt-in)** | `make sitl-gz` (`compose.gazebo.yaml`, `-p weed-spray-gz`) | Vehicle cam now on `rtsp://127.0.0.1:8554/cam` (GstCameraSystem RTP `:5600` → MediaMTX `udp+rtp` + `rtpSDP` in `sitl/mediamtx-gazebo.yml`). Full-green **not yet** — Offboard lidar-hold still open on [#19](https://github.com/bi21an5a1b07-bot/weed-spray/issues/19). Do **not** claim exit `0` |
+| **Gazebo (opt-in)** | `make sitl-gz` + `make backend-gz` | Vehicle cam on `rtsp://127.0.0.1:8554/cam`. Exit `0` is allowed when step 7 is a real lidar sample in 0.24–0.32 m. A recorded green table is not a substitute for this run. |
 
 Default `make sitl` is unchanged. Do not start Gazebo on the shared bot VM. Details: [sitl.md](sitl.md).
 
@@ -109,7 +109,142 @@ Default PX4 SIH still expects an honest fail on hover AGL. SIH may publish a bog
 
 Do not treat GPS / `vehicle_local_position.z` as AGL. Do not invent rangefinder PX4 params to fake a green table. "Good enough for SIH" = processes up + steps 1–6 and 10 behaving as above + honest step 7 fail — **not** `make accept` exit `0`.
 
-Exit `0` only with a real rangefinder in the 0.24–0.32 m band (hardware, or Gazebo once Offboard lidar-hold lands on #19). Opt-in `make sitl-gz` now has vehicle cam on `8554/cam` but still does **not** deliver full-green / exit `0`. Default compose remains SIH.
+Exit `0` only with a real rangefinder sample in the 0.24–0.32 m band (Gazebo `make sitl-gz` + `make backend-gz`, or hardware). Default compose remains SIH, and SIH step 7 stays a fail. Do not substitute GPS or local `z`.
+
+`make accept` does **not** exercise YOLO, the dashboard overlay, georeference, or the train gate. Those are the next section. Run `make accept` with `WEED_YOLO_GEOREFERENCE` unset so step 4 stays the harness inject.
+
+## Vision and georeference
+
+`make accept` is the flight loop with injected boxes. The detector, the overlay, plant placement, and the train gate are separate. None of them may set `confirmed`. A click is not a confirm.
+
+Do not turn `WEED_YOLO_GEOREFERENCE` on for the `make accept` run. Leave it unset.
+
+### What each stack can prove
+
+| Check | SIH file loop | Gazebo camera | Needs weights |
+|---|---|---|---|
+| Injector health, inject is not confirm | yes | yes | no |
+| Missing weights file stays injector | yes | yes | no |
+| Weights file, no `yolo` extra: process up, `camera: false`, no boxes | yes | yes | a dummy file |
+| Pixel boxes on `GET /detections` and the dashboard | yes, if the clip is the lawn video | frames arrive; a backyard model will not see sim grass | yes, and `uv sync --extra yolo` |
+| New mission rows from those pixels | no. The recording is not the vehicle's view | only during scan, with live scan-height lidar and a sourced lens | pixels from the reader |
+| Hover step 7 | fail, `missing` | pass only if the sample is in 0.24–0.32 m | no |
+| Train refuses an empty class or an orphan label | host only. No PX4 | host only | no |
+
+There is no HTTP call that inserts a pixel box. `POST /inject` is north/east plants. Georeference reads `GET /detections` from the reader. If Gazebo emits no boxes, write "blocked: no pixel rows". Do not inject `w1` and call that a detector test.
+
+### 1. Injector (default)
+
+```bash
+uv run weed-spray-vision
+curl -s http://127.0.0.1:8090/health
+```
+
+Expect `mode` `injector`, `weights` null, `ok` true. Then:
+
+```bash
+curl -s -X POST http://127.0.0.1:8090/inject \
+  -H 'content-type: application/json' \
+  -d '{"detections":[{"id":"w1","class":"dandelion","north_m":1,"east_m":2,"conf":0.9}]}'
+```
+
+The body is the box. It has no `confirmed` field. `GET http://127.0.0.1:8000/vision/boxes` (backend up) returns `boxes: []` because that row has no `cx`. The dashboard overlay stays empty. The detections table still shows `w1` after the backend inject. **Confirm selected** is still required before visit.
+
+### 2. Missing weights file
+
+```bash
+WEED_YOLO_WEIGHTS=/tmp/no-such-weights.pt uv run weed-spray-vision
+```
+
+Process stays up. `GET /health` is still `injector` / `weights` null. The log contains one line: `WEED_YOLO_WEIGHTS /tmp/no-such-weights.pt is missing; staying injector`. A second `GET /health` does not log it again.
+
+### 3. Weights file, YOLO package not installed
+
+```bash
+touch /tmp/empty.pt
+WEED_YOLO_WEIGHTS=/tmp/empty.pt uv run weed-spray-vision
+curl -s http://127.0.0.1:8090/health
+curl -s http://127.0.0.1:8090/detections
+```
+
+Expect `mode` `yolo`, `camera` false, `ok` true, `detections` `[]`. The log says ultralytics is not installed. The process does not exit.
+
+### 4. Reader on the RTSP URL
+
+Install the extra once: `uv sync --extra yolo`. Point `WEED_YOLO_WEIGHTS` at `var/yolo/weeds/weights/best.pt` (do not commit the file). `WEED_YOLO_DEVICE=cpu` unless the GPU is actually visible; then `0`.
+
+- **See** (file loop): publish a lawn clip on `:8554/cam`, not `media/smoke.mp4`. `make sitl` loops `smoke.mp4` for connect-smoke only. Georeference **off**.
+- **Place** (Gazebo): `make sitl-gz` so `:8554/cam` is the vehicle camera. A backyard-trained model will usually emit nothing. That is a blocked place-check, not a failed flight.
+
+While the reader is running:
+
+```bash
+curl -s http://127.0.0.1:8090/health
+curl -s http://127.0.0.1:8090/detections
+curl -s http://127.0.0.1:8000/vision/boxes
+```
+
+`camera` true after the stream opens. Each detection has `class`, `conf`, `cx`, `cy`, `w`, `h`, `frame_w`, `frame_h`, `frame_t`. No `north_m` or `east_m`. `GET /vision/boxes` repeats only rows that have `cx`. Class is one of dandelion, clover, thistle, mallow. Anything else is dropped. Confidence under `0.5`, and a short side under 20 px at `imgsz` 640, are dropped.
+
+Stop the camera or the weights fail to load: `GET /detections` goes back to `[]` and `camera` is false. The last frame must not stick.
+
+Dashboard at `http://127.0.0.1:8080`: rectangles show class and confidence. The caption says HLS lags RTSP, so the rectangle is not frame-locked. With georeference off the rectangles have no id: clicking one does not select a table row and does not confirm. **Kill** stays outside the video frame. Check a narrow window too; the overlay must not cover Confirm or Kill.
+
+### 5. Forward camera and arrival
+
+The Gazebo overlay looks forward and 15° down (`WEED_CAM_TILT_DEG=15`). A centered box is a plant about `h / tan(15°)` metres ahead at scan height, not under the aircraft. `h` is `distance_scan_m`.
+
+Georeference still needs `WEED_CAM_HFOV_DEG`. The sourced lens is 99.7° (1.74 rad in the `mono_cam` model cited in [sitl.md](sitl.md)). Leave it unset and the scan stores no `y*` rows (`camera tilt unset` or `camera HFOV unset`). Do not use 90°.
+
+With both set, during scan only:
+
+- The row’s north/east is the ground hit. It is unconfirmed.
+- `arrival_time_s` is horizontal distance divided by closing speed (`vn_m_s`, `ve_m_s`). Stopped or flying away yields no time. That time does not start a descent.
+- On the visit, hover descent starts only when horizontal position is within `WEED_ARRIVAL_TOLERANCE_M` (0.5 m) of the stored point. If that wait times out, the pump does not pulse and `last_error` contains `not over`.
+- Tilt unset, or tilt 90°, does not add this wait. `make accept` leaves tilt unset.
+
+Image-right is body-right in the math. One Gazebo frame against a known object still has to confirm which way is up in the picture before a `y*` row is sprayed.
+
+### 6. Georeference (Gazebo scan only)
+
+Do not enable this on SIH. `observe_pixels` does not read `WEED_LIDAR_EXPECTED`. A SIH `DISTANCE_SENSOR` sample that sits in 1–5 m next to relative altitude fills `distance_scan_m` and would place plants from a bogus height. SIH stays at the default `WEED_YOLO_GEOREFERENCE` unset.
+
+On Gazebo, backend env (same process as `make backend-gz`):
+
+- `WEED_YOLO_GEOREFERENCE=1`
+- `WEED_CAM_TILT_DEG=15` — must match the SDF mount (`mono_cam` pitch 0.2618 rad forward). Same value as §5. Do **not** set `WEED_CAM_TILT_DEG=90` while the SDF/camera stay 15° forward: that desyncs the gate vs geometry and makes visit/spray aim under the aircraft instead of the weed ~`h/tan(15°)` ahead.
+- `WEED_CAM_HFOV_DEG` set from the `mono_cam` model inside the image you actually started. `sitl/gz/models/x500_lidar_down/model.sdf` only includes `model://mono_cam`. It does not state a field of view. The unit tests use 90° as a hand calculation. That number is not the vehicle lens. If you have not read the model, leave the variable unset.
+
+Unset tilt, unset lens, or no live scan-height lidar: scan still finishes, no `y*` rows, and `last_error` says the lidar is missing, `camera tilt unset`, or `camera HFOV unset`. It must not mention substituting relative altitude or local `z`.
+
+During **scan** only, with `telemetry.distance_sensor_stream_alive` true and `distance_scan_m` in 1–5 m (about the 2.0 m lawnmower height, not the 0.27 m hover reading):
+
+- New rows are `y1`, `y2`, … unconfirmed. They do not replace an injected `w1`.
+- Two close hits of the same class (within `WEED_YOLO_ASSOC_M`, default 0.35 m) stay one id. A different class, or the same class farther than that, is a second id.
+- Place-check uses the **forward** ground hit from `project_oblique`, not nadir under the vehicle. Image center is **not** the vehicle's `north_m` / `east_m`: at tilt 15° and height `h` it is about `h / tan(15°)` metres ahead along heading (~7.46 m at `h` = 2 m). Image-right is body-right (+east when heading is 0). Image-down pitches with the camera (aft only when tilt is 90° / nadir). Confirm that image-up matches the nose against a known object in one Gazebo frame before any `y*` row is sprayed. If the sign is wrong, fix the projection; do not add a hidden flip.
+- A point outside the typed fence is dropped.
+- Confirm one id. Later frames must not move it, and `confirmed` stays true. A rejected id stays unconfirmed.
+- After the phase leaves `scanning`, new pixels add no ids.
+- Kill during scan cancels the poll. The lawnmower does not abort just because the vision worker is down (log: `vision poll failed`).
+- `GET /vision/boxes` adds `id` on a pixel that matches a `y*` row, and only while lidar, lens, tilt, and pose are present. Clicking that rectangle selects the same table row as the checkbox. **Confirm selected** is still the button that allows a visit. Unconfirmed ids do not pulse.
+
+Hover trust is unchanged: a sample at or above 1 m does not set `distance_sensor_m`. A sample outside the 1–5 m scan band clears `distance_scan_m`. Do not georeference from a stale scan height after the stream goes quiet.
+
+### 7. Train gate (no PX4, no download)
+
+```bash
+uv run weed-spray-train --list-sources
+```
+
+Prints `bot_files/weeds_sources.md` and does not download.
+
+```bash
+uv run weed-spray-train
+```
+
+Exit 2 when `weeds/dataset/images/train` or `val` has no images, or when any of the four classes has zero label rows **paired** to an image in `images/train`. The message names the class (`dandelion`, `clover`, `thistle`, or `mallow`). A `labels/train/*.txt` whose stem has no matching image does not count. Clover may be absent from the backyard clip; do not describe that class as detected, and do not lower `WEED_YOLO_CONF` to hide it.
+
+A real training run is operator work on the GPU after the gate passes. It is not part of `make accept`, and the weights stay out of git.
 
 ## After the run
 

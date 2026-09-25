@@ -92,6 +92,50 @@ async def test_scan_requires_fence_and_connection():
 
 
 @pytest.mark.asyncio
+async def test_forward_camera_does_not_descend_until_over_the_plant(monkeypatch):
+    """A centered box is not arrival. Hover descent waits for the ground point."""
+    from weed_spray.backend.config import Settings
+
+    monkeypatch.setattr(
+        "weed_spray.backend.mission.settings",
+        Settings(cam_tilt_deg=15.0, arrival_tolerance_m=0.5),
+    )
+    mission, vehicle = _mission()
+    vehicle.block_arrival = True
+    await mission.connect()
+    await mission.set_fence(FenceBox())
+    mission.inject(InjectRequest(detections=[_dandelion("w1")]))
+    mission.confirm(ConfirmRequest(ids=["w1"]))
+    await mission.visit_now()
+    await asyncio.wait_for(mission._run_task, timeout=2)
+    hover_downs = [down for _n, _e, down in vehicle.gotos if abs(down) < 1.0]
+    assert hover_downs == []
+    assert vehicle.pulses == 0
+    assert mission.state.detections[0].sprayed is False
+    assert "not over" in (mission.state.last_error or "")
+
+
+@pytest.mark.asyncio
+async def test_forward_camera_descends_once_position_arrives(monkeypatch):
+    from weed_spray.backend.config import Settings
+
+    monkeypatch.setattr(
+        "weed_spray.backend.mission.settings",
+        Settings(cam_tilt_deg=15.0, arrival_tolerance_m=0.5),
+    )
+    mission, vehicle = _mission()
+    await mission.connect()
+    await mission.set_fence(FenceBox())
+    mission.inject(InjectRequest(detections=[_dandelion("w1")]))
+    mission.confirm(ConfirmRequest(ids=["w1"]))
+    await mission.visit_now()
+    await asyncio.wait_for(mission._run_task, timeout=2)
+    assert vehicle.arrivals == [(6.0, 4.0, 0.5)]
+    assert mission.state.detections[0].sprayed is True
+    assert vehicle.pulses == 1
+
+
+@pytest.mark.asyncio
 async def test_dashboard_scan_then_visit_confirmed_only():
     mission, vehicle = _mission()
     await mission.connect()

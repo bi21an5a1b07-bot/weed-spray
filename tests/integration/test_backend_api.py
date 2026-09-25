@@ -190,6 +190,7 @@ async def test_vision_boxes_stamps_yolo_id_for_click(api, monkeypatch):
             update={
                 "yolo_georeference": True,
                 "cam_hfov_deg": 90.0,
+                "cam_tilt_deg": 90.0,
                 "yolo_assoc_m": 0.35,
                 "yolo_conf": 0.5,
                 "yolo_imgsz": 640,

@@ -31,14 +31,12 @@ Accurate profile for issue [#19](https://github.com/bi21an5a1b07-bot/weed-spray/
 - Images (exactly those in `compose.gazebo.yaml`; do not `docker pull` extras at runtime):
   - `px4io/px4-sitl-gazebo:latest` with `PX4_SIM_MODEL=gz_x500_lidar_down`, `HEADLESS=1`, `LIBGL_ALWAYS_SOFTWARE=1` (gpu_lidar otherwise sticks at 0.10 m min range in Docker/WSL — issue #28)
   - `bluenviron/mediamtx:latest` (config `sitl/mediamtx-gazebo.yml`)
-- Model overlay: repo `sitl/gz/models/x500_lidar_down` merges downward `mono_cam` onto stock `gz_x500_lidar_down` (sourced from PX4-gazebo-models `x500_mono_cam_down`)
+- Model overlay: repo `sitl/gz/models/x500_lidar_down` mounts `mono_cam` **forward and 15° down** (pitch 0.2618 rad). Optical axis is the link +X. Lens in `px4io/px4-sitl-gazebo:/opt/px4-gazebo/share/gz/models/mono_cam/model.sdf` is `<horizontal_fov>1.74</horizontal_fov>` radians (99.7°), 1280×960. That is not applied as a default setting.
 - **Vehicle camera is wired:** Gazebo GstCameraSystem UDP RTP **`:5600`** H264 PT 96 (ingest only — not a second GCS path) → MediaMTX `udp+rtp://127.0.0.1:5600` + H264 PT 96 `rtpSDP` in `sitl/mediamtx-gazebo.yml` → **`rtsp://127.0.0.1:8554/cam`** (one GCS URL). Dashboard still HLS `:8888`. **No** `cam-bridge`. **No** bare ffmpeg `rtp://`. **No** `smoke.mp4` on this profile.
 - WSL: `network_mode: host` + `extra_hosts: host.docker.internal:127.0.0.1` (same HEARTBEAT fix as SIH)
 - Do not start Gazebo on the shared Grok Bot VM — operator WSL only (AWS later only if RAM allows)
 
-**Hover / lidar-hold blocker:** PX4 `MPC_ALT_MODE` terrain hold is **Position/Altitude only, not Offboard** ([PX4 terrain following / holding](https://docs.px4.io/main/en/flying/terrain_following_holding.html)). Do **not** fake AGL with local `z`. Do not invent `EKF2_RNG_*`, `COM_RCL_EXCEPT`, `NAV_RCL_ACT=0`, or `COM_RC_IN_MODE=4`. Offboard lidar-hold remains open on #19.
-
-Live gz `make accept` exit `0` is **not** available yet (cam path landed; takeoff wait is #27; Offboard lidar-hold still open on #19). Host GCS for gz: `make backend-gz` (`WEED_TAKEOFF_TIMEOUT_S=90`). SIH bar unchanged (exit `1`, step 7 missing). See [acceptance.md](acceptance.md).
+**Hover:** do **not** fake AGL with local `z`. Do not invent `EKF2_RNG_*`, `COM_RCL_EXCEPT`, `NAV_RCL_ACT=0`, or `COM_RC_IN_MODE=4`. Host GCS for gz: `make backend-gz` (`WEED_TAKEOFF_TIMEOUT_S=90`, `WEED_LIDAR_EXPECTED=true`, `WEED_HOVER_ALTITUDE_MODE=offboard_agl`). SIH bar unchanged (exit `1`, step 7 missing). Gazebo may exit `0` when step 7 is in band. See [acceptance.md](acceptance.md).
 
 ## Accept script
 

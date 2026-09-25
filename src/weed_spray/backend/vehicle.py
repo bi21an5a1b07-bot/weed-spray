@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import math
+import time
 from collections.abc import Awaitable, Callable
 
 from mavsdk import System
@@ -278,6 +279,10 @@ class Vehicle:
             self._telem.north_m = float(pos.north_m)
             self._telem.east_m = float(pos.east_m)
             self._telem.ned_down_m = float(pos.down_m)
+            vel = getattr(sample, "velocity", None)
+            if vel is not None:
+                self._telem.vn_m_s = float(vel.north_m_s)
+                self._telem.ve_m_s = float(vel.east_m_s)
 
     async def _track_position(self) -> None:
         """Update lat/lon/relative altitude from GLOBAL_POSITION."""
@@ -368,6 +373,39 @@ class Vehicle:
             await asyncio.sleep(0.2)
             await self.drone.offboard.set_position_ned(sp)
             await self.drone.offboard.start()
+
+    async def wait_over_target(
+        self,
+        north: float,
+        east: float,
+        tolerance_m: float,
+        timeout_s: float = 30.0,
+    ) -> float:
+        """Wait until horizontal position is within ``tolerance_m`` of the plant.
+
+        Uses ``north_m`` / ``east_m`` from ``position_velocity_ned``. Does not
+        treat local ``z`` as the check. Raises ``TimeoutError`` if the vehicle
+        does not arrive. An elapsed ETA is not arrival.
+
+        Args:
+            north: Plant north, metres.
+            east: Plant east, metres.
+            tolerance_m: Horizontal arrival radius, metres.
+            timeout_s: Give up after this many seconds.
+
+        Returns:
+            Horizontal distance at arrival, metres.
+        """
+        deadline = time.monotonic() + timeout_s
+        while True:
+            telem = self.telemetry
+            if telem.north_m is not None and telem.east_m is not None:
+                dist = math.hypot(telem.north_m - north, telem.east_m - east)
+                if dist <= tolerance_m:
+                    return dist
+            if time.monotonic() >= deadline:
+                raise TimeoutError(f"not over target within {tolerance_m} m")
+            await asyncio.sleep(0.1)
 
     async def goto_ned(self, north: float, east: float, down: float, settle_s: float = 2.0) -> None:
         """Command Offboard position. ``down`` is NED z (positive down). Sleeps ``settle_s``."""

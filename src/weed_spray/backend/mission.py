@@ -14,7 +14,7 @@ from statistics import median
 import httpx
 
 from weed_spray.vision.classes import CLASSES
-from weed_spray.vision.project import project_nadir
+from weed_spray.vision.project import project_oblique
 
 from .config import settings
 from .geo import lawnmower_waypoints
@@ -118,6 +118,9 @@ class Mission:
         if settings.cam_hfov_deg is None:
             self.state.last_error = "YOLO skipped: camera HFOV unset"
             return
+        if settings.cam_tilt_deg is None:
+            self.state.last_error = "YOLO skipped: camera tilt unset"
+            return
         if telem.north_m is None or telem.east_m is None or telem.heading_deg is None:
             self.state.last_error = "YOLO skipped: vehicle north/east missing"
             return
@@ -137,12 +140,13 @@ class Mission:
             height = float(row.get("h", 0.0))
             if conf < settings.yolo_conf or min(width, height) * settings.yolo_imgsz < 20:
                 continue
-            point = project_nadir(
+            point = project_oblique(
                 cx=float(row["cx"]),
                 cy=float(row["cy"]),
                 frame_w=int(row.get("frame_w") or settings.yolo_imgsz),
                 frame_h=int(row.get("frame_h") or settings.yolo_imgsz),
                 hfov_deg=settings.cam_hfov_deg,
+                tilt_deg=settings.cam_tilt_deg,
                 height_m=telem.distance_scan_m,
                 north_m=telem.north_m,
                 east_m=telem.east_m,
@@ -232,7 +236,7 @@ class Mission:
         telem = self.vehicle.telemetry
         if not telem.distance_sensor_stream_alive or telem.distance_scan_m is None:
             return None
-        if settings.cam_hfov_deg is None:
+        if settings.cam_hfov_deg is None or settings.cam_tilt_deg is None:
             return None
         if telem.north_m is None or telem.east_m is None or telem.heading_deg is None:
             return None
@@ -245,12 +249,13 @@ class Mission:
         fence_tuple = None
         if fence is not None:
             fence_tuple = (fence.north_m, fence.south_m, fence.east_m, fence.west_m)
-        point = project_nadir(
+        point = project_oblique(
             cx=float(row["cx"]),
             cy=float(row["cy"]),
             frame_w=int(row.get("frame_w") or settings.yolo_imgsz),
             frame_h=int(row.get("frame_h") or settings.yolo_imgsz),
             hfov_deg=settings.cam_hfov_deg,
+            tilt_deg=settings.cam_tilt_deg,
             height_m=telem.distance_scan_m,
             north_m=telem.north_m,
             east_m=telem.east_m,
@@ -439,6 +444,19 @@ class Mission:
                 return
             self._set_phase(MissionPhase.visiting)
             await self.vehicle.goto_ned(det.north_m, det.east_m, down_scan, settle_s=4.0)
+            # Forward camera: the plant is ahead of the picture. Descend only
+            # once horizontal position is on that ground point. Tilt unset or
+            # nadir (90°) keeps the previous visit, so make accept is unchanged.
+            if settings.cam_tilt_deg is not None and settings.cam_tilt_deg < 80.0:
+                try:
+                    await self.vehicle.wait_over_target(
+                        det.north_m,
+                        det.east_m,
+                        settings.arrival_tolerance_m,
+                    )
+                except TimeoutError:
+                    self.state.last_error = f"not over {det.id}; hover descent skipped"
+                    continue
             det.visited = True
             self._set_phase(MissionPhase.hovering)
             if settings.hover_altitude_mode == "offboard_agl":

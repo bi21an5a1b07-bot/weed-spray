@@ -37,7 +37,14 @@ class Settings(BaseSettings):
         yolo_georeference: During scan, project vision pixels into local NED.
             Default false. Requires ``cam_hfov_deg`` and ``distance_scan_m``.
         cam_hfov_deg: Horizontal field of view in degrees. Unset refuses
-            georeference. Do not invent a lens.
+            georeference. Do not invent a lens. Gazebo ``mono_cam`` in
+            ``px4io/px4-sitl-gazebo`` is 1.74 rad (99.7°); that is a citation,
+            not a default.
+        cam_tilt_deg: Depression of the scan camera below the horizon.
+            Unset refuses georeference. 90 is nadir. The Gazebo overlay uses 15.
+        arrival_tolerance_m: Horizontal metres. Hover descent waits until the
+            vehicle is this close to the ground point when tilt is below 80°.
+        closing_speed_min_m_s: Slower than this toward the plant is not an approach.
         yolo_assoc_m: Same-class match radius in metres.
         yolo_conf: Drop pixel rows below this confidence.
         yolo_imgsz: Inference size used for the 20 px short-side rule.
@@ -67,6 +74,9 @@ class Settings(BaseSettings):
     scan_speed_m_s: float = 2.0
     yolo_georeference: bool = False
     cam_hfov_deg: float | None = None
+    cam_tilt_deg: float | None = None
+    arrival_tolerance_m: float = 0.5
+    closing_speed_min_m_s: float = 0.2
     yolo_assoc_m: float = 0.35
     yolo_conf: float = 0.5
     yolo_imgsz: int = 640

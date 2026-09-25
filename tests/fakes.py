@@ -27,6 +27,8 @@ class FakeVehicle:
         self.offboard_holds = 0
         self.rtl_calls = 0
         self.kills = 0
+        self.block_arrival = False
+        self.arrivals: list[tuple[float, float, float]] = []
         self._telem = Telemetry(distance_sensor_missing=True)
         hold = _async_noop
         self.drone = SimpleNamespace(action=SimpleNamespace(hold=hold))
@@ -67,6 +69,22 @@ class FakeVehicle:
         """Record the hold setpoint."""
         self.offboard_holds += 1
         self.gotos.append((north, east, down))
+
+    async def wait_over_target(
+        self,
+        north: float,
+        east: float,
+        tolerance_m: float,
+        timeout_s: float = 30.0,
+    ) -> float:
+        """Record the wait. Snap onto the plant unless ``block_arrival`` is set."""
+        _ = timeout_s
+        self.arrivals.append((north, east, tolerance_m))
+        if self.block_arrival:
+            raise TimeoutError("not over target")
+        self._telem.north_m = north
+        self._telem.east_m = east
+        return 0.0
 
     async def goto_ned(self, north: float, east: float, down: float, settle_s: float = 0.0) -> None:
         """Append NED; simulate lidar after near-ground descend (``|down|`` ≤ 1 m)."""
