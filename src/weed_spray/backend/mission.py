@@ -205,6 +205,64 @@ class Mission:
         ]
         return f"y{max(nums, default=0) + 1}"
 
+    def stamp_yolo_ids(self, pixels: list[dict]) -> list[dict]:
+        """Copy pixel rows and attach matched ``y*`` ids for overlay click-to-select.
+
+        Vision never owns mission ids. The dashboard only calls ``onPick`` when
+        ``box.id`` is set, so ``/vision/boxes`` joins each live pixel to the
+        nearest same-class ``y*`` track using the same nadir projection as
+        ``observe_pixels``. Georeference off, or missing live scan lidar /
+        lens / pose, leaves rows without ``id`` (checkbox-only selection).
+        """
+        out: list[dict] = []
+        for row in pixels:
+            stamped = dict(row)
+            track_id = self._yolo_id_for_pixel(row)
+            if track_id is not None:
+                stamped["id"] = track_id
+            out.append(stamped)
+        return out
+
+    def _yolo_id_for_pixel(self, row: dict) -> str | None:
+        """Project one pixel and return the matched ``y*`` id, or None."""
+        if not settings.yolo_georeference:
+            return None
+        if "cx" not in row or row.get("class") not in CLASSES:
+            return None
+        telem = self.vehicle.telemetry
+        if not telem.distance_sensor_stream_alive or telem.distance_scan_m is None:
+            return None
+        if settings.cam_hfov_deg is None:
+            return None
+        if telem.north_m is None or telem.east_m is None or telem.heading_deg is None:
+            return None
+        conf = float(row.get("conf", 0.0))
+        width = float(row.get("w", 0.0))
+        height = float(row.get("h", 0.0))
+        if conf < settings.yolo_conf or min(width, height) * settings.yolo_imgsz < 20:
+            return None
+        fence = self.state.fence
+        fence_tuple = None
+        if fence is not None:
+            fence_tuple = (fence.north_m, fence.south_m, fence.east_m, fence.west_m)
+        point = project_nadir(
+            cx=float(row["cx"]),
+            cy=float(row["cy"]),
+            frame_w=int(row.get("frame_w") or settings.yolo_imgsz),
+            frame_h=int(row.get("frame_h") or settings.yolo_imgsz),
+            hfov_deg=settings.cam_hfov_deg,
+            height_m=telem.distance_scan_m,
+            north_m=telem.north_m,
+            east_m=telem.east_m,
+            heading_deg=telem.heading_deg,
+            fence=fence_tuple,
+        )
+        if point is None:
+            return None
+        north, east = point
+        by_id = {det.id: det for det in self.state.detections}
+        return self._match_yolo(by_id, str(row["class"]), north, east)
+
     async def _fetch_yolo_pixels(self) -> list[dict]:
         """GET the vision worker's current detections. Raises if it is down."""
         async with httpx.AsyncClient(timeout=1.0) as client:
