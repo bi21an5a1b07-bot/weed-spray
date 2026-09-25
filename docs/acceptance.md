@@ -58,7 +58,7 @@ uv run weed-spray         # :8000  (SIH). For make sitl-gz: make backend-gz
 (cd dashboard && npm run dev)  # :8080
 ```
 
-Optional: open http://127.0.0.1:8080 to watch. The harness does not need a human click for confirm — it POSTs `/confirm` as the harness-as-human (backend still requires that message; inject never confirms).
+`make accept` only checks that port 8080 answers. It does not open the page. Any UAT that claims the dashboard works must also run [Dashboard in Chrome](#dashboard-in-chrome). The harness still POSTs `/confirm` itself. A click in the window is not a confirm.
 
 `media/smoke.mp4` is `testsrc` for connect-smoke. Injected boxes still pass detect-step 4. A lawn `.mp4` is for a green vision pass later, not required for this harness path.
 
@@ -73,7 +73,9 @@ make accept
 
 The script prints the markdown table and writes `--out` (default `var/last-run.md`).
 
-**Default SIH stack:** expect exit code `1`. Step 7 fails (hover samples `missing` — no usable short-range lidar; SIH may emit bogus `DISTANCE_SENSOR` readings **≥ 1 m** that the backend drops); steps 8–9 are then `blocked`. That is a correct SIH run, not a setup failure. Exit `0` only when every step passes (needs real rangefinder in the 0.24–0.32 m band — not default compose).
+**Default SIH stack:** `weed-spray-accept` exits `1`. Step 7 fails (hover samples `missing` — no usable short-range lidar). SIH may emit bogus `DISTANCE_SENSOR` readings. Values **≥ 1 m** are dropped. A short value is still logged `missing` while `WEED_LIDAR_EXPECTED` is false, and the ned path still pulses. Steps 8–9 are then `blocked`. That is a correct SIH run, not a setup failure. Exit `0` only when every step passes (needs real rangefinder in the 0.24–0.32 m band — not default compose).
+
+`make accept` is that program under GNU make. Make prints `make: *** [Makefile:43: accept] Error 1` and **make itself exits 2**. The `1` is the grader. The `2` is make's "recipe failed" code. Do not treat exit 2 as a second failure. `uv run weed-spray-accept --out var/last-run.md` exits `1` directly, with no make wrapper.
 
 ## The 10 steps (what the harness does)
 
@@ -94,15 +96,15 @@ Source of truth for pass criteria: `bot_files/sitl_loop.md`. Implementation: `sr
 
 Order nuance: the harness **injects before scan** (steps numbered 4 then 3 in wall-clock), then grades scan when phase reaches `awaiting_confirm`. Pass/fail rows still use the step names above.
 
-First fail stops further grading (`blocked`). Step 10 still runs if the vehicle was armed.
+First fail stops further **grading** (`blocked`). It does not undo work the vehicle already did. On a correct SIH run, step 8 can read `blocked` while `pulses=1` and `durations=[0.75]`, and step 9 can read `blocked` while the phase is already `rtl`. The visit pulsed and started home before the grader stopped scoring. Step 10 still runs if the vehicle was armed.
 
 ## Expected SIH result
 
-Default PX4 SIH still expects an honest fail on hover AGL. SIH may publish a bogus `DISTANCE_SENSOR` (often tracking GPS / relative alt, e.g. ~12 m); the backend treats readings **≥ 1 m** as `missing` (`distance_reading_m` / room-agreed #14 tip). Real spray-hover lidar ~0.24–0.32 m is kept. On the default `make sitl` path:
+Default PX4 SIH still expects an honest fail on hover AGL. SIH may publish a bogus `DISTANCE_SENSOR` (often tracking GPS / relative alt, e.g. ~12 m). Readings **≥ 1 m** are dropped (`distance_reading_m`). A short reading is logged `missing` too while `WEED_LIDAR_EXPECTED` is false, so it is not treated as hover AGL. Real spray-hover lidar ~0.24–0.32 m is kept only when a lidar is declared. On the default `make sitl` path:
 
 | | Expected |
 |---|---|
-| Exit code | `1` (not `0`) |
+| Grader exit | `1` (not `0`). `make accept` then exits `2` because make reports a failed recipe |
 | Step 7 | `fail` — hover samples `missing` |
 | Steps 8–9 | `blocked` (first fail stops the grade) |
 | Step 10 | still runs if the vehicle armed |
@@ -111,7 +113,49 @@ Do not treat GPS / `vehicle_local_position.z` as AGL. Do not invent rangefinder 
 
 Exit `0` only with a real rangefinder sample in the 0.24–0.32 m band (Gazebo `make sitl-gz` + `make backend-gz`, or hardware). Default compose remains SIH, and SIH step 7 stays a fail. Do not substitute GPS or local `z`.
 
-`make accept` does **not** exercise YOLO, the dashboard overlay, georeference, or the train gate. Those are the next section. Run `make accept` with `WEED_YOLO_GEOREFERENCE` unset so step 4 stays the harness inject.
+`make accept` does **not** exercise YOLO, the dashboard page, georeference, or the train gate. The page is [Dashboard in Chrome](#dashboard-in-chrome). The rest are the next section. Run `make accept` with `WEED_YOLO_GEOREFERENCE` unset so step 4 stays the harness inject.
+
+## Dashboard in Chrome
+
+Required whenever the dashboard is part of the claim. `dash=True` in `var/last-run.md` is only "port 8080 answered". It is not this check.
+
+Drive a **visible** Chrome window through the [Chrome DevTools MCP server](https://github.com/ChromeDevTools/chrome-devtools-mcp/) (`chrome-devtools-mcp`). Do not pass `--headless`. Do not satisfy this section with `curl`, a screenshot flag on `chrome.exe`, or Playwright.
+
+Register it in the user config `~/.grok/config.toml` (not in this repo) and start a new session so the tools are connected:
+
+```toml
+[mcp_servers.chrome-devtools]
+command = "npx"
+args = ["-y", "chrome-devtools-mcp@latest", "--isolated", "--viewport=1280x800", "--no-usage-statistics"]
+startup_timeout_sec = 120
+```
+
+`--isolated` is a throwaway profile. This session runs in WSL, so the server must start a Chrome that Linux can drive (`DISPLAY` is already set). Do not point `--executablePath` at Windows `chrome.exe` under `/mnt/c`. Do not add this package to `dashboard/package.json`.
+
+With `make sitl`, vision, backend, and `npm run dev` already up, and georeference unset:
+
+1. `new_page` → `http://127.0.0.1:8080`. A window must appear. The server starts Chrome on this call, not merely by being connected.
+2. `wait_for` the text `HLS lags RTSP` and `Kill (pump off)`.
+3. `take_snapshot` and `take_screenshot` at 1280×800.
+4. `list_console_messages` and `list_network_requests`.
+5. `resize_page` to 390×844. Snapshot and screenshot again.
+
+Pass when all of these are true at both sizes:
+
+- The page is the weed-spray dashboard, not a connection error.
+- The snapshot has a video and the sentence `HLS lags RTSP, so a rectangle is not frame-locked.`
+- **Confirm selected** and **Kill (pump off)** are both present. Kill is outside the camera frame and still reachable at 390 px.
+- No detection rectangle. This stack is the injector.
+- The picture is **not** the drone. `make sitl` loops `media/smoke.mp4` (a test pattern) into `rtsp://127.0.0.1:8554/cam`. A color-bar frame is the correct SIH video. The vehicle camera is only `make sitl-gz`, on this same page address. A late HLS segment is a note, not by itself a failure.
+- No uncaught page error. `/api/state` and `/api/preflight` are not failed requests.
+
+Do not click Connect, Scan, Confirm, or Kill. Those talk to the vehicle. `take_snapshot` is the source of element ids. `click` uses that id only in a later pass that has a `y*` box. Then `close_page`.
+
+### Gazebo picture, before any `y*` spray
+
+This is a separate Chrome pass. Do it once on `make sitl-gz` plus `make backend-gz`, with vision and the dashboard up. Leave `WEED_YOLO_GEOREFERENCE` unset so nothing is placed or sprayed. `new_page` the same `http://127.0.0.1:8080`.
+
+The video must be the vehicle's forward, 15°-down camera, not `smoke.mp4`. Pick one object you can see in the Gazebo world (the ground ahead, or a known model) and record which edge of the picture is the nose. Image-right is body-right in the math. Image-up versus the nose is **not** proven until this note exists. If the picture is upside down or backwards relative to that object, fix the projection. Do not add a hidden flip, and do not spray a `y*` row. Do not click Connect, Scan, Confirm, or Kill for this look.
 
 ## Vision and georeference
 
@@ -188,7 +232,7 @@ curl -s http://127.0.0.1:8000/vision/boxes
 
 Stop the camera or the weights fail to load: `GET /detections` goes back to `[]` and `camera` is false. The last frame must not stick.
 
-Dashboard at `http://127.0.0.1:8080`: rectangles show class and confidence. The caption says HLS lags RTSP, so the rectangle is not frame-locked. With georeference off the rectangles have no id: clicking one does not select a table row and does not confirm. **Kill** stays outside the video frame. Check a narrow window too; the overlay must not cover Confirm or Kill.
+Dashboard rectangles are judged in Chrome via [Dashboard in Chrome](#dashboard-in-chrome), not by curl. Class and confidence are on the rectangle. The caption says HLS lags RTSP, so the rectangle is not frame-locked. With georeference off the rectangles have no id: clicking one does not select a table row and does not confirm. **Kill** stays outside the video frame at 1280 px and at 390 px.
 
 ### 5. Forward camera and arrival
 
@@ -203,7 +247,7 @@ With both set, during scan only:
 - On the visit, hover descent starts only when horizontal position is within `WEED_ARRIVAL_TOLERANCE_M` (0.5 m) of the stored point. If that wait times out, the pump does not pulse and `last_error` contains `not over`.
 - Tilt unset, or tilt 90°, does not add this wait. `make accept` leaves tilt unset.
 
-Image-right is body-right in the math. One Gazebo frame against a known object still has to confirm which way is up in the picture before a `y*` row is sprayed.
+Image-right is body-right in the math. Which way is up is the [Gazebo picture](#gazebo-picture-before-any-y-spray) check. Do not spray a `y*` row until that note exists.
 
 ### 6. Georeference (Gazebo scan only)
 
@@ -221,7 +265,7 @@ During **scan** only, with `telemetry.distance_sensor_stream_alive` true and `di
 
 - New rows are `y1`, `y2`, … unconfirmed. They do not replace an injected `w1`.
 - Two close hits of the same class (within `WEED_YOLO_ASSOC_M`, default 0.35 m) stay one id. A different class, or the same class farther than that, is a second id.
-- Place-check uses the **forward** ground hit from `project_oblique`, not nadir under the vehicle. Image center is **not** the vehicle's `north_m` / `east_m`: at tilt 15° and height `h` it is about `h / tan(15°)` metres ahead along heading (~7.46 m at `h` = 2 m). Image-right is body-right (+east when heading is 0). Image-down pitches with the camera (aft only when tilt is 90° / nadir). Confirm that image-up matches the nose against a known object in one Gazebo frame before any `y*` row is sprayed. If the sign is wrong, fix the projection; do not add a hidden flip.
+- Place-check uses the **forward** ground hit from `project_oblique`, not nadir under the vehicle. Image center is **not** the vehicle's `north_m` / `east_m`: at tilt 15° and height `h` it is about `h / tan(15°)` metres ahead along heading (~7.46 m at `h` = 2 m). Image-right is body-right (+east when heading is 0). Image-down pitches with the camera (aft only when tilt is 90° / nadir). Which way is up is the [Gazebo picture](#gazebo-picture-before-any-y-spray) check, done with georeference off and without clicking Connect, Scan, Confirm, or Kill. If that picture is upside down or backwards, fix the projection. Do not add a hidden flip, and do not spray a `y*` row until the note exists.
 - A point outside the typed fence is dropped.
 - Confirm one id. Later frames must not move it, and `confirmed` stays true. A rejected id stays unconfirmed.
 - After the phase leaves `scanning`, new pixels add no ids.
@@ -259,6 +303,7 @@ A real training run is operator work on the GPU after the gate passes. It is not
 - Invent PX4 params (`COM_RCL_EXCEPT` bit 2, `NAV_RCL_ACT=0`, etc.) — [sitl.md](sitl.md), `bot_files/px4_offboard.md`.
 - Start accept from a Grok Bot VM / cloud agent (no Docker there for this loop).
 - Call `make accept` without SITL + the three host apps (step 1 will fail).
+- Call the dashboard checked because port 8080 answered, or because Chrome was headless. The page check is [Dashboard in Chrome](#dashboard-in-chrome).
 
 ## Related
 

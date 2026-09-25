@@ -24,6 +24,8 @@ class Settings(BaseSettings):
         lidar_expected: Explicit belly-lidar / Gazebo capability flag.
             Default False (SIH). Required True with offboard_agl — SIH
             cannot fake this; flat Gazebo sets WEED_LIDAR_EXPECTED=1.
+            False logs the hover sample as missing even when a short
+            DISTANCE_SENSOR reading is present. The ned path still pulses.
         takeoff_timeout_s: Dashboard-first wait for relative_alt ≥ 70% of
             scan height (issue #27). Default 20 s (SIH). Gazebo needs 60-90.
         hover_min_m / hover_max_m: Accept band for measured AGL (above gear).

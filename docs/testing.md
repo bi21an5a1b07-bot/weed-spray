@@ -48,10 +48,10 @@ make accept
 
 Grades `bot_files/sitl_loop.md`. SIH hover step is expected to fail without a rangefinder. Gazebo (`make sitl-gz` + `make backend-gz`) is the path that can pass step 7.
 
-`make accept` does not start a detector. Vision modes, the overlay, georeference, and the train gate have their own checks in [acceptance.md](acceptance.md#vision-and-georeference).
+`make accept` does not start a detector and does not open the dashboard page. Vision modes, the overlay, georeference, and the train gate have their own checks in [acceptance.md](acceptance.md#vision-and-georeference). The page itself is required to be checked in a visible Chrome window through Chrome DevTools MCP: [acceptance.md](acceptance.md#dashboard-in-chrome).
 
 ## What is not tested here
 
-- Browser E2E (Playwright). The overlay click is a manual check.
+- Playwright. The dashboard check is Chrome DevTools MCP, not a Playwright suite. The overlay click (select a `y*` row, do not confirm) is still a later pass.
 - Real Kakute / USB CDC
 - A full Ultralytics training run (the empty-class and orphan-label gates are unit-tested; training itself is operator-run)

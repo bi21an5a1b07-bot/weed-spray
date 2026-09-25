@@ -84,6 +84,8 @@ async def test_visit_offboard_agl_happy_path_via_apply_sample(monkeypatch):
     assert any(abs(g[2] - (-1.0)) < 1e-9 for g in v.gotos)
     assert v.offboard_holds >= 1
     assert v.pulses == 1
+    assert m.state.hover_agl_m[0].missing is False
+    assert m.state.hover_agl_m[0].agl_m == pytest.approx(0.27)
 
 
 @pytest.mark.asyncio
@@ -98,6 +100,36 @@ async def test_visit_default_ned_does_not_call_agl(monkeypatch):
     await m._visit_confirmed()
     assert v.goto_agls == []
     assert any(abs(g[2] - (-0.27)) < 1e-9 for g in v.gotos)
+
+
+@pytest.mark.asyncio
+async def test_ned_without_lidar_logs_short_distance_as_missing(monkeypatch):
+    """A sub-1 m SIH DISTANCE_SENSOR reading is not hover AGL.
+
+    ``WEED_LIDAR_EXPECTED`` stays false. The hover log is ``missing`` and the
+    pump still pulses once, which is the SIH accept grade (step 7 fail, one
+    0.75 s pulse).
+    """
+    monkeypatch.setattr(
+        "weed_spray.backend.mission.settings",
+        Settings(
+            hover_altitude_mode="ned",
+            hover_agl_m=0.27,
+            scan_agl_m=2.0,
+            lidar_expected=False,
+        ),
+    )
+    v = FakeVehicle()
+    v.connected = True
+    v.agl_after_descend_m = 0.12
+    m = _mission(v)
+    await m._visit_confirmed()
+    assert v.pulses == 1
+    assert len(m.state.hover_agl_m) == 1
+    sample = m.state.hover_agl_m[0]
+    assert sample.missing is True
+    assert sample.agl_m is None
+    assert sample.detection_id == "w1"
 
 
 @pytest.mark.asyncio
