@@ -30,7 +30,7 @@ Pydantic settings. `env_prefix="WEED_"`, unknown env keys ignored. Does **not** 
 | `scan_agl_m` | `2.0` | Lawnmower altitude (metres) |
 | `hover_agl_m` | `0.27` | Commanded spray hover (gear ~0.22 m + ~2 in); NED down = `−this` when mode is `ned` |
 | `hover_altitude_mode` | `ned` | `ned` (SIH) or `offboard_agl` (MAVSDK AGL / PX4 terrain-alt Offboard) |
-| `lidar_expected` | `false` | Required `true` with `offboard_agl` (Gazebo); SIH stays false |
+| `lidar_expected` | `false` | Required `true` with `offboard_agl` (Gazebo). False (SIH) logs hover AGL as `missing` even for a short `DISTANCE_SENSOR` reading; the ned path still pulses |
 | `takeoff_timeout_s` | `20` | Dashboard-first wait for relative_alt ≥ 70% of scan height |
 | `hover_min_m` / `hover_max_m` | `0.24` / `0.32` | Accept band for **measured** AGL (above landing gear) |
 | `lidar_mount_down_m` | `0.0` | Belly lidar below CG; NED hover down = `-(hover_agl_m + this)` |
@@ -301,7 +301,7 @@ Visit loop then RTL; pump-off on exception.
 
 #### `async Mission._visit_confirmed()`
 
-For each confirmed id: XY at 2 m, mark visited, descend to hover, sample AGL (or `missing`), pulse 0.75 s, mark sprayed, climb, next. Unconfirmed ids are never in the target list.
+For each confirmed id: XY at 2 m, mark visited, descend to hover, sample AGL, pulse 0.75 s, mark sprayed, climb, next. Unconfirmed ids are never in the target list. With `lidar_expected` false the hover sample is `missing` even if a short `DISTANCE_SENSOR` value is present, and the ned path still pulses. A declared lidar logs that reading. `offboard_agl` still refuses an out-of-band sample before the log line.
 
 #### `Mission.run_log() -> dict`
 
@@ -552,13 +552,25 @@ Step 7 fails when `hover_agl_m` is `missing` (expected on SIH). Step 8 requires 
 
 `fetch('/api' + path)` with JSON headers. Throws `Error` with path, status, and body text on non-OK.
 
+### `chooseHlsPlayback(hlsSupported)` (`playback.ts`)
+
+Returns `"hls.js"` when hls.js can attach, otherwise `"native"`. Native is not chosen from `canPlayType`, which Chrome answers `"maybe"` and then fails to demux.
+
+### `attachStateSocket(socket, handlers)` (`stateSocket.ts`)
+
+Binds message and error handlers. Cleanup closes an open socket immediately. A socket that is still connecting is closed on its open event. An error after cleanup does not call `onSocketError`. A second error does not call it again.
+
+### `missionSocket(ws)`
+
+Adapts a browser `WebSocket` to `MissionSocket` so message text, close, open, and error stay on that socket.
+
 ### `CamMonitor({ rtsp, boxes, onPick })`
 
-`<video>` + `hls.js` on `/hls/cam/index.m3u8`. Pixel boxes sit on the frame. `onPick` runs only when a box has an id. Vite proxies `/hls` to MediaMTX `:8888`.
+`<video>` on `/hls/cam/index.m3u8`, via `chooseHlsPlayback`. hls.js uses `lowLatencyMode`. Pixel boxes sit on the frame. `onPick` runs only when a box has an id. Vite proxies `/hls` to MediaMTX `:8888`.
 
 ### `function App()`
 
-Localhost GCS: fence form, arm-source select, confirm/reject, visit, RTL, people hold, kill. Subscribes to `/ws`; falls back to polling `/api/state`.
+Localhost GCS: fence form, arm-source select, confirm/reject, visit, RTL, people hold, kill. Subscribes to `/ws` through `attachStateSocket`. On a socket error, polls `GET /api/state` every 500 ms. Cleanup clears that timer and closes the socket.
 
 #### `toggle(id)`
 

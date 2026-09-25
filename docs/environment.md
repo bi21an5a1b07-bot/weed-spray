@@ -12,7 +12,7 @@ Prefix `WEED_`. Defined in `weed_spray.backend.config.Settings`.
 | `WEED_HTTP_PORT` | `8000` | Backend port |
 | `WEED_SCAN_AGL_M` | `2.0` | Lawnmower altitude |
 | `WEED_HOVER_AGL_M` | `0.27` | Commanded spray hover (gear ~0.22 m + ~2 in). Under `ned`, NED down = −this; under `offboard_agl`, **positive AGL metres** |
-| `WEED_LIDAR_EXPECTED` | `false` | Belly-lidar / Gazebo capability. Required `true` with `offboard_agl`. Default SIH stays false (SIH cannot fake a real lidar) |
+| `WEED_LIDAR_EXPECTED` | `false` | Belly-lidar / Gazebo capability. Required `true` with `offboard_agl`. Default SIH stays false. A false value logs hover AGL as `missing` even when `DISTANCE_SENSOR` publishes a short reading (including under 1 m). The ned path still pulses. |
 | `WEED_TAKEOFF_TIMEOUT_S` | `20` | Dashboard-first wait for relative_alt ≥ 70% of scan height (issue #27). SIH default 20 s; `make backend-gz` uses 90 |
 | `WEED_HOVER_ALTITUDE_MODE` | `ned` | `ned` or `offboard_agl` (needs `WEED_LIDAR_EXPECTED`; latch scan-height stream → NED → in-band → AGL). Flat ds≈rel unlocks stream; lag/None-rel do not |
 | `WEED_HOVER_MIN_M` / `MAX` | `0.24` / `0.32` | Accept band for measured AGL (above landing gear) |

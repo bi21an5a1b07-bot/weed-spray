@@ -9,6 +9,8 @@ TypeScript + React 19 + Vite. Source: `dashboard/src/`. Localhost only.
 | `index.html` | Mounts `#root` |
 | `src/main.tsx` | `createRoot` + `StrictMode` |
 | `src/App.tsx` | All GCS UI and API calls |
+| `src/playback.ts` | hls.js vs native playlist choice |
+| `src/stateSocket.ts` | Mission WebSocket attach and cleanup |
 | `src/style.css` | Dark, compact operator layout |
 | `src/vite-env.d.ts` | Vite client types |
 | `vite.config.ts` | Port 8080, `/api` and `/ws` proxies |
@@ -24,11 +26,11 @@ TypeScript + React 19 + Vite. Source: `dashboard/src/`. Localhost only.
 
 Telemetry line: phase, MAV up/down, armed, relative altitude, lidar (`missing` on SIH), pump value.
 
-Camera: `<video>` + `hls.js` on `/hls/cam/index.m3u8`. Vite proxies `/hls` to MediaMTX `:8888` and strips the `Secure` cookie so HTTP localhost can play. Direct WebRTC on `:8889` fails from a Windows browser (ICE / “peer connection closed”). RTSP `8554/cam` stays the backend/YOLO pull.
+Camera: `<video>` on `/hls/cam/index.m3u8`. hls.js plays the playlist whenever `Hls.isSupported()` is true, including in Chrome, which reports native HLS as `"maybe"` and then fails to demux. A native `video.src` is used only when hls.js cannot attach. Vite proxies `/hls` to MediaMTX `:8888` and strips the `Secure` cookie so HTTP localhost can play. Direct WebRTC on `:8889` fails from a Windows browser (ICE / “peer connection closed”). RTSP `8554/cam` stays the backend/YOLO pull.
 
 The page polls `GET /api/vision/boxes` every 500 ms and draws class and confidence on the video. The line under the video says HLS lags RTSP. A box with an id selects that table row. It does not confirm. Injector rows have no pixel box, so the overlay stays empty.
 
-On load, `GET /api/preflight` is fetched only to confirm the backend is up; the banner text is hardcoded (not legal advice). State is pushed over WebSocket `/ws`; if the socket errors, the UI polls `GET /api/state` every 500 ms.
+On load, `GET /api/preflight` is fetched only to confirm the backend is up; the banner text is hardcoded (not legal advice). State is pushed over WebSocket `/ws`. If the socket errors, the UI polls `GET /api/state` every 500 ms, and leaving the page clears that timer. A socket that is still connecting is closed when it opens, so StrictMode's first cleanup does not close it mid-handshake.
 
 ## Types in `App.tsx`
 
@@ -36,4 +38,4 @@ On load, `GET /api/preflight` is fetched only to confirm the backend is up; the 
 - `State` — subset of backend `AppState` the UI actually renders.
 - `empty` — idle default before the first snapshot.
 
-Functions: `api`, `App`, `toggle`, `run`. See [code-reference.md](code-reference.md#dashboardsrcapptsx).
+Functions: `chooseHlsPlayback`, `attachStateSocket`, `missionSocket`, `api`, `App`, `toggle`, `run`. See [code-reference.md](code-reference.md#dashboardsrcapptsx).

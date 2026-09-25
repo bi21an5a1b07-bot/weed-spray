@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Hls from "hls.js";
 
+import { chooseHlsPlayback } from "./playback";
+import { attachStateSocket, type MissionSocket } from "./stateSocket";
+
 /** One plant row from backend AppState (JSON key is `class`). */
 type Detection = {
   id: string;
@@ -62,6 +65,44 @@ type PixelBox = {
   h: number;
 };
 
+/**
+ * Adapt a browser `WebSocket` to the DOM-free mission socket.
+ *
+ * Message data is passed as text. Close, open, and error stay on the
+ * underlying socket so `attachStateSocket` can defer a connecting close.
+ *
+ * @param ws - Socket opened against `/ws`.
+ * @returns A `MissionSocket` whose handlers forward to `ws`.
+ */
+function missionSocket(ws: WebSocket): MissionSocket {
+  return {
+    get readyState() {
+      return ws.readyState;
+    },
+    close() {
+      ws.close();
+    },
+    set onmessage(handler: MissionSocket["onmessage"]) {
+      ws.onmessage = handler ? (ev) => handler({ data: String(ev.data) }) : null;
+    },
+    get onmessage(): MissionSocket["onmessage"] {
+      return null;
+    },
+    set onerror(handler: MissionSocket["onerror"]) {
+      ws.onerror = handler ? () => handler() : null;
+    },
+    get onerror(): MissionSocket["onerror"] {
+      return null;
+    },
+    set onopen(handler: MissionSocket["onopen"]) {
+      ws.onopen = handler ? () => handler() : null;
+    },
+    get onopen(): MissionSocket["onopen"] {
+      return null;
+    },
+  };
+}
+
 /** Same-origin HLS of the MediaMTX file loop. WebRTC ICE fails from Windows→WSL. */
 function CamMonitor({
   rtsp,
@@ -77,11 +118,10 @@ function CamMonitor({
     const video = videoRef.current;
     if (!video) return;
     const src = "/hls/cam/index.m3u8";
-    if (video.canPlayType("application/vnd.apple.mpegurl")) {
+    if (chooseHlsPlayback(Hls.isSupported()) === "native") {
       video.src = src;
       return;
     }
-    if (!Hls.isSupported()) return;
     const hls = new Hls({ lowLatencyMode: true });
     hls.loadSource(src);
     hls.attachMedia(video);
@@ -185,18 +225,24 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    let pollId: ReturnType<typeof setInterval> | undefined;
     const ws = new WebSocket(`ws://${location.host}/ws`);
-    ws.onmessage = (ev) => setState(JSON.parse(ev.data));
-    ws.onerror = () => {
-      const id = setInterval(() => {
-        fetch("/api/state")
-          .then((r) => r.json())
-          .then(setState)
-          .catch(() => undefined);
-      }, 500);
-      return () => clearInterval(id);
+    const stop = attachStateSocket(missionSocket(ws), {
+      onMessage: (data) => setState(JSON.parse(data)),
+      onSocketError: () => {
+        if (pollId !== undefined) return;
+        pollId = setInterval(() => {
+          fetch("/api/state")
+            .then((r) => r.json())
+            .then(setState)
+            .catch(() => undefined);
+        }, 500);
+      },
+    });
+    return () => {
+      if (pollId !== undefined) clearInterval(pollId);
+      stop();
     };
-    return () => ws.close();
   }, []);
 
   const t = state.telemetry;

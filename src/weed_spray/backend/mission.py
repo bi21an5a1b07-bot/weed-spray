@@ -1,7 +1,8 @@
 """Mission state machine: fence → scan → confirm → visit/pulse → RTL.
 
-Unconfirmed detections are never sprayed. Hover AGL uses DISTANCE_SENSOR or
-``missing`` (SIH has none). See ``docs/architecture.md``.
+Unconfirmed detections are never sprayed. Hover AGL uses DISTANCE_SENSOR only
+when ``lidar_expected`` is set; otherwise the sample is ``missing`` (SIH).
+See ``docs/architecture.md``.
 """
 
 from __future__ import annotations
@@ -429,6 +430,11 @@ class Mission:
         ``offboard_agl``: stream_alive, step NED to -1 m then hover, wait lidar
         in band, then ``goto_global_agl``. SIH ``ned``: NED hover only. Hover
         AGL proof is DISTANCE_SENSOR, never local ``z``.
+
+        When ``settings.lidar_expected`` is false (default SIH), the hover log
+        sample is ``missing`` even if a short ``DISTANCE_SENSOR`` value arrived.
+        The ned path still pulses. A declared lidar keeps that reading, and
+        ``offboard_agl`` has already refused an out-of-band sample before the log.
         """
         confirmed_ids = {c.detection_id for c in self.state.confirms if c.decision == "confirm"}
         targets = [d for d in self.state.detections if d.id in confirmed_ids]
@@ -503,13 +509,22 @@ class Mission:
             else:
                 await self.vehicle.goto_ned(det.north_m, det.east_m, down_hover, settle_s=3.0)
             telem = self.vehicle.telemetry
-            if telem.distance_sensor_missing or telem.distance_sensor_m is None:
+            # A short SIH reading is not AGL. Only a declared lidar is logged.
+            if (
+                settings.lidar_expected
+                and not telem.distance_sensor_missing
+                and telem.distance_sensor_m is not None
+            ):
                 self.state.hover_agl_m.append(
-                    HoverSample(detection_id=det.id, agl_m=None, missing=True)
+                    HoverSample(
+                        detection_id=det.id,
+                        agl_m=telem.distance_sensor_m,
+                        missing=False,
+                    )
                 )
             else:
                 self.state.hover_agl_m.append(
-                    HoverSample(detection_id=det.id, agl_m=telem.distance_sensor_m, missing=False)
+                    HoverSample(detection_id=det.id, agl_m=None, missing=True)
                 )
             self._set_phase(MissionPhase.spraying)
             await self.vehicle.pulse_pump(settings.pump_pulse_s)
