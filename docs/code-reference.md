@@ -460,7 +460,7 @@ Train YOLO on `weeds/weeds.yaml`. Does **not** download public archives.
 
 ### `IMAGE_EXTS`
 
-`{".jpg", ".jpeg", ".png", ".webp"}`.
+Frozen set matching Ultralytics 8.4.135 `IMG_FORMATS`: `.avif`, `.bmp`, `.dng`, `.heic`, `.heif`, `.jp2`, `.jpeg`, `.jpg`, `.mpo`, `.png`, `.tif`, `.tiff`, `.webp`. Used by `_count_images` and `_train_image_stems` / `missing_train_classes`.
 
 ### `repo_root() -> Path`
 
@@ -472,7 +472,7 @@ Resolved once at import.
 
 ### `_count_images(split) -> int`
 
-Count RGB files in `weeds/dataset/images/{train,val}`. Ignores `.gitkeep` and non-image files.
+Count files in `weeds/dataset/images/{train,val}` whose suffix is in `IMAGE_EXTS` (Ultralytics `IMG_FORMATS` mirror). Ignores `.gitkeep` and other files.
 
 ### `list_sources()`
 
@@ -480,7 +480,7 @@ Print `bot_files/weeds_sources.md`. Does not download. Reminds the operator to c
 
 ### `missing_train_classes() -> list[str]`
 
-Names in `labels/train` with zero YOLO rows. A missing folder means every class.
+Class names with zero YOLO label rows paired to `images/train`. Only `labels/train/<stem>.txt` whose stem matches an `IMAGE_EXTS` file under `images/train` count. Orphan label files without a matching image do not clear the gate. Comment and blank lines, and ids outside `0..nc-1`, are ignored. A missing labels folder means every class.
 
 ### `load_yolo()`
 
@@ -488,7 +488,7 @@ Imports Ultralytics `YOLO`. Tests replace it.
 
 ### `train(device, epochs, imgsz, model) -> int`
 
-Exit 2 if train or val has no images, or if any class has zero train boxes (names the class). Then loads YOLO.
+Exit 2 if train or val has no images, or if any class has zero paired train boxes (names the class; orphans ignored). Then loads YOLO.
 
 Run Ultralytics on `weeds.yaml`. Returns **2** if train/val is empty or `ultralytics` is missing (`uv sync --extra yolo`). Writes to `var/yolo/weeds`. Returns **0** on success.
 
