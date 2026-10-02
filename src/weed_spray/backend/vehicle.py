@@ -181,6 +181,42 @@ def apply_distance_sample(
         telem.distance_scan_m = None
 
 
+def apply_battery_sample(
+    telem: Telemetry,
+    voltage_v: object,
+    remaining_percent: object,
+) -> None:
+    """Store one MAVSDK pack sample. Invalid fields keep the previous value.
+
+    ``remaining_percent`` is the MAVSDK 0-100 scale, so ``1.0`` is one percent.
+    Non-finite, non-positive voltage, or a percent outside 0-100 is ignored.
+    This does not write a PX4 battery parameter and does not command RTL.
+
+    Args:
+        telem: Snapshot to update.
+        voltage_v: Pack voltage in volts, or junk.
+        remaining_percent: Estimated remaining on the 0-100 scale, or junk.
+    """
+
+    def _finite(raw: object) -> float | None:
+        if raw is None:
+            return None
+        try:
+            value = float(raw)
+        except (TypeError, ValueError):
+            return None
+        if math.isnan(value) or math.isinf(value):
+            return None
+        return value
+
+    voltage = _finite(voltage_v)
+    if voltage is not None and voltage > 0:
+        telem.battery_voltage_v = voltage
+    percent = _finite(remaining_percent)
+    if percent is not None and 0 <= percent <= 100:
+        telem.battery_remaining_pct = percent
+
+
 class Vehicle:
     """MAVSDK client for one PX4 vehicle.
 
@@ -210,7 +246,11 @@ class Vehicle:
         return t
 
     async def connect(self, address: str = settings.mavsdk_address) -> None:
-        """Wait for a MAVSDK heartbeat, home position, then start trackers."""
+        """Wait for a MAVSDK heartbeat, home position, then start trackers.
+
+        Trackers include the PX4 pack (``telemetry.battery``). A missing sample
+        leaves pack fields empty. No battery parameter is written.
+        """
         log.info("MAVSDK connecting %s", address)
         await self.drone.connect(system_address=address)
         async for state in self.drone.core.connection_state():
@@ -228,6 +268,7 @@ class Vehicle:
             asyncio.create_task(self._track_distance()),
             asyncio.create_task(self._track_rc()),
             asyncio.create_task(self._track_flight_mode()),
+            asyncio.create_task(self._track_battery()),
         ]
         log.info("connected home=%s,%s", self.home_lat, self.home_lon)
 
@@ -305,6 +346,18 @@ class Vehicle:
         """Update ``telemetry.heading_deg``."""
         async for att in self.drone.telemetry.heading():
             self._telem.heading_deg = att.heading_deg
+
+    async def _track_battery(self) -> None:
+        """Store pack voltage and remaining percent. Does not set PX4 params."""
+        try:
+            async for sample in self.drone.telemetry.battery():
+                apply_battery_sample(
+                    self._telem,
+                    getattr(sample, "voltage_v", None),
+                    getattr(sample, "remaining_percent", None),
+                )
+        except Exception as exc:  # noqa: BLE001  SIH may omit BATTERY_STATUS
+            log.info("battery unavailable: %s", exc)
 
     async def _track_distance(self) -> None:
         """Subscribe to DISTANCE_SENSOR; SIH mirrors never mark stream alive."""
