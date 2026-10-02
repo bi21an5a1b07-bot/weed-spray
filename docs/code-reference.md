@@ -95,7 +95,7 @@ One plant. JSON field is `"class"` (alias of `class_name`). Fields: `id`, `class
 
 ### `class Telemetry`
 
-Last MAVSDK snapshot: `connected`, `armed`, `in_air`, `lat`, `lon`, `north_m`, `east_m`, `ned_down_m` (local NED down, **not** AGL), `relative_alt_m`, `heading_deg`, `distance_sensor_m` (trusted spray hover, dropped at ≥ 1 m), `distance_scan_m` (1-5 m sample only when relative alt is in that same band), `distance_sensor_missing` (true when no usable short-range reading — typical on SIH, including dropped **≥ 1 m** bogus streams), `distance_sensor_stream_alive` (positive finite raw DISTANCE_SENSOR seen in the scan band), `pump_value`, `flight_mode`, `rc_available`.
+Last MAVSDK snapshot: `connected`, `armed`, `in_air`, `lat`, `lon`, `north_m`, `east_m`, `ned_down_m` (local NED down, **not** AGL), `relative_alt_m`, `heading_deg`, `distance_sensor_m` (trusted spray hover, dropped at ≥ 1 m), `distance_scan_m` (1-5 m sample only when relative alt is in that same band), `distance_sensor_missing` (true when no usable short-range reading — typical on SIH, including dropped **≥ 1 m** bogus streams), `distance_sensor_stream_alive` (positive finite raw DISTANCE_SENSOR seen in the scan band), `pump_value`, `flight_mode`, `rc_available`, `battery_voltage_v`, `battery_remaining_pct` (PX4 pack estimate, percent 0-100, both null until a finite sample; not the pump rail; no PX4 battery parameter is written).
 
 ### `class AppState`
 
@@ -143,7 +143,7 @@ Copy of last snapshot plus live `connected` and `pump_value`.
 
 #### `async Vehicle.connect(address=settings.mavsdk_address)`
 
-Wait for MAVSDK heartbeat, store home from global position, start seven tracker tasks. Does not write PX4 params.
+Wait for MAVSDK heartbeat, store home from global position, start nine tracker tasks. Does not write PX4 params. The pack tracker subscribes to `telemetry.battery` and leaves voltage and percent empty until a finite sample arrives.
 
 #### `async Vehicle._wait_global_position()`
 
@@ -165,6 +165,11 @@ If `on_failsafe` is set, await it. `kind` is a `PumpOffEvent.type`.
 | `_track_in_air` | `in_air` | used for RC-first takeoff |
 | `_track_heading` | `heading` | `heading_deg` |
 | `_track_distance` | `distance_sensor` | `apply_distance_sample` (1-5 m with relative alt in band → stream alive and `distance_scan_m`; short-range trust → `distance_sensor_m`) |
+| `_track_battery` | `battery` | `apply_battery_sample` stores finite volts and a percent in 0-100. Invalid fields keep the previous value. Does not command RTL |
+
+### `apply_battery_sample(telem, voltage_v, remaining_percent)`
+
+Store one MAVSDK pack sample on `Telemetry`. `remaining_percent` uses the MAVSDK 0-100 scale (`1.0` is one percent). Non-finite voltage, voltage `<= 0`, and a percent outside 0-100 are ignored and do not clear a previous good sample. Does not write a PX4 parameter.
 
 #### `async Vehicle.upload_fence(box)`
 
@@ -545,7 +550,7 @@ Step 7 fails when `hover_agl_m` is `missing` (expected on SIH). Step 8 requires 
 ### Types
 
 - `Detection` — table row: `id`, `class`/`class_name`, NED metres, `confirmed`/`visited`/`sprayed`.
-- `State` — UI snapshot: `phase`, `last_error`, URLs, telemetry subset, detections.
+- `State` — UI snapshot: phase, fence, kind, arm source, errors, pump and phase logs, URLs, telemetry (including flight mode, radio, NED position, heading, speed, pack voltage and percent), detections.
 - `empty` — idle `State` before the first backend snapshot.
 
 ### `async api(path, init?)`
@@ -568,9 +573,19 @@ Adapts a browser `WebSocket` to `MissionSocket` so message text, close, open, an
 
 `<video>` on `/hls/cam/index.m3u8`, via `chooseHlsPlayback`. hls.js uses `lowLatencyMode`. Pixel boxes sit on the frame. `onPick` runs only when a box has an id. Vite proxies `/hls` to MediaMTX `:8888`.
 
+### `status.ts`
+
+Display rules for the console. Pack floors (`PACK_CAUTION_V` 14.8, `PACK_WARNING_V` 14.0, `PACK_CAUTION_PCT` 30, `PACK_WARNING_PCT` 20) are UI hints for the planned 4S pack. They are not PX4 parameters and they do not command RTL.
+
+- `actionEnabled(name, ctx)` — Kill, people-hold, and Connect stay available. Scan needs a connection and an uploaded fence, and is inert while takeoff, scan, or visit is running.
+- `primaryAction(ctx)` — The one filled command: connect, set fence, scan, confirm, or visit.
+- `packTone` / `groundTone` / `pumpTone` / `radioReading` / `armedReading` — `neutral`, `nominal`, `caution`, `warning`, or `stale`.
+- `planPercent(fence, north, east)` — North-up point in the yard SVG. Null when the rectangle has no area.
+- `headingOffset(headingDeg, length)` — Nose tick. Heading 0 is north (up).
+
 ### `function App()`
 
-Localhost GCS: fence form, arm-source select, confirm/reject, visit, RTL, people hold, kill. Subscribes to `/ws` through `attachStateSocket`. On a socket error, polls `GET /api/state` every 500 ms. Cleanup clears that timer and closes the socket.
+Localhost GCS. Sticky status bar (phase, mode, link, aircraft, radio, pack, height above home, height above ground, pump, vision, picture, session), camera and yard plan, commands grouped as Prepare, Plants, Recover, and Stop. Subscribes to `/ws` through `attachStateSocket`. On a socket error, polls `GET /api/state` every 500 ms. A snapshot older than one second is marked stale. Cleanup clears that timer and closes the socket. A detection click selects a row. Confirm is a separate command.
 
 #### `toggle(id)`
 

@@ -156,6 +156,9 @@ class Telemetry(BaseModel):
     ``north_m`` / ``east_m`` are local NED from ``position_velocity_ned``.
     ``ned_down_m`` is that same stream's down axis and is not AGL.
     ``vn_m_s`` / ``ve_m_s`` are horizontal velocity. Down velocity is not stored.
+    ``battery_voltage_v`` and ``battery_remaining_pct`` are the PX4 pack
+    estimate (percent is 0-100). Both stay None until a finite sample arrives.
+    They are not a pump-rail measurement and they do not write PX4 parameters.
     """
 
     connected: bool = False
@@ -177,6 +180,8 @@ class Telemetry(BaseModel):
     pump_value: float = 0.0
     flight_mode: str | None = None
     rc_available: bool | None = None
+    battery_voltage_v: float | None = None
+    battery_remaining_pct: float | None = None
 
 
 class AppState(BaseModel):
