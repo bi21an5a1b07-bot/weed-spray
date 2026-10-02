@@ -20,7 +20,7 @@ There is no ROS. There are no `.launch` files. SITL is Docker Compose on operato
 | Accurate GCS | `make backend-gz` | `WEED_HOVER_ALTITUDE_MODE=offboard_agl`, `WEED_LIDAR_EXPECTED=true` |
 | CI / AWS | `docs/acceptance-aws.md` | SIH is the cheap path. Gazebo is ~25 GB RAM; do not leave it on a $10/mo host. |
 
-PX4, MediaMTX, and ffmpeg are the only compose services. Backend, vision, and dashboard stay on the host. Hardware later: camera on the airframe to the **laptop**, commands over MAVLink only.
+Compose services only: SIH (`compose.yaml`) is PX4 + MediaMTX + **ffmpeg** (file loop). Gazebo (`compose.gazebo.yaml`) is **PX4 + MediaMTX only** — GstCamera RTP → MediaMTX; **no** ffmpeg / `smoke.mp4` on that profile. Backend, vision, and dashboard stay on the host. Hardware later: camera on the airframe to the **laptop**, commands over MAVLink only.
 
 ## Topology lock
 
