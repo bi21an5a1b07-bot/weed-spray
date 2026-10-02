@@ -59,7 +59,7 @@ AirSim is **not** a MediaMTX drop-in. A later spike on the Windows GPU box shoul
 | Hardware first-flight | PX4 **v1.14+ / main** |
 | Project AirSim supported SITL | **v1.12.3** ([px4.html](https://iamaisim.github.io/ProjectAirSim/controllers/px4/px4.html)); other versions “may work but are unsupported” |
 
-Pinning sim to 1.12.3 would diverge from the Kakute and from our Docker images. Proving **our** PX4 (`px4_sitl none_*` from current source, or the existing `px4io` images) against AirSim’s TCP 4560 sim connector is a remaining operator-host experiment.
+Pinning sim to 1.12.3 would diverge from the Kakute and from our Docker images. AirSim attaches over TCP **4560** to a **source-built** `make px4_sitl none_*` (external sim). The existing `px4io/px4-sitl` and `px4io/px4-sitl-gazebo` images start **embedded** SIH/Gazebo and **will not** attach to AirSim — do not treat Docker SITL as the AirSim PX4 proof. Remaining experiment: build current PX4 (or a supported release) as `none_*` in WSL2 and connect it to Windows Unreal.
 
 ## Do not copy AirSim PX4 sample params
 
@@ -84,14 +84,14 @@ No backyard-trained YOLO place-check has been run on sim weeds. Domain gap (asse
 | Camera into YOLO | RTP 5600 already in compose | New bridge; PixelStreaming is not RTSP |
 | Lidar hover | Overlay + `backend-gz` ([#19](https://github.com/bi21an5a1b07-bot/weed-spray/issues/19) closed 2026-09-16) | Runtime has no lidar; Unreal lidar is a different sensor |
 | RAM / AWS | Heavy; SIH is the UAT path | Heavier; not the $10/mo host |
-| PX4 | Same `px4io` images as SIH | Docs pin v1.12.3 |
+| PX4 | `px4io/px4-sitl-gazebo` (not the SIH `px4-sitl` image) | Source-built `px4_sitl none_*` + TCP 4560; Docker SIH/Gazebo images will not attach |
 
 ## Remaining on the Windows GPU host
 
 - [ ] Run Unreal Project AirSim on Windows; PX4 in this WSL2; HEARTBEAT on 14540 from weed-spray.
 - [ ] Bridge `get_images` RGB into MediaMTX `8554/cam` without sending video through PX4.
 - [ ] Spawn separate plant actors; run backyard YOLO; record precision/recall vs Gazebo `mono_cam`.
-- [ ] Prove current PX4 (not only v1.12.3) against TCP 4560.
+- [ ] Prove current PX4 as **source-built** `px4_sitl none_*` (not only v1.12.3) against AirSim TCP 4560 — not via `px4io` Docker images.
 - [ ] Keep `NAV_RCL_ACT` untouched.
 
 Until those pass, AirSim is optional **offline synthetic-data** (RGB + seg IDs) at most.
