@@ -82,7 +82,7 @@ No backyard-trained YOLO place-check has been run on sim weeds. Domain gap (asse
 |---|---|---|
 | Host | Operator WSL + Docker | Windows GPU + WSL2 PX4 + firewall |
 | Camera into YOLO | RTP 5600 already in compose | New bridge; PixelStreaming is not RTSP |
-| Lidar hover | Overlay + `backend-gz` (issue #19 still open) | Runtime has no lidar; Unreal lidar is a different sensor |
+| Lidar hover | Overlay + `backend-gz` ([#19](https://github.com/bi21an5a1b07-bot/weed-spray/issues/19) closed 2026-09-16) | Runtime has no lidar; Unreal lidar is a different sensor |
 | RAM / AWS | Heavy; SIH is the UAT path | Heavier; not the $10/mo host |
 | PX4 | Same `px4io` images as SIH | Docs pin v1.12.3 |
 
