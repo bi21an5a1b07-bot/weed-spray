@@ -90,7 +90,7 @@ Do not add FastAPI, Ruff, or npm packages to `[tools]` in `mise.toml`. Do not in
 ```bash
 mise trust && mise install && mise run install
 make sitl                 # PX4 SIH + RTSP file loop (Docker)
-make sitl-gz              # opt-in Gazebo gz_x500_lidar_down (issue #19; WSL)
+make sitl-gz              # opt-in Gazebo gz_x500_lidar_down (#19 closed; WSL)
 make sitl-gz-down         # tear down Gazebo compose only
 make down                 # tear down SIH and Gazebo compose
 uv run weed-spray-vision  # :8090
@@ -125,7 +125,7 @@ Ruff config is `[tool.ruff]` in `pyproject.toml`. Do not disable a rule to hide 
 | `bot_files/weeds_class-map.md` | `nc=4`; never renumber 0/1/2 |
 
 Default SIH compose images stay exactly: `px4io/px4-sitl` (`PX4_SIM_MODEL=sihsim_quadx`), `bluenviron/mediamtx`, `mwader/static-ffmpeg:7.1` (binary is `/ffmpeg`). `network_mode: host`. One vehicle.
-Opt-in Gazebo profile (`compose.gazebo.yaml` / `make sitl-gz`): `px4io/px4-sitl-gazebo` + `gz_x500_lidar_down` (repo lidar+cam overlay) + MediaMTX `udp+rtp://127.0.0.1:5600` with H264 PT 96 `rtpSDP` → `8554/cam`. Distinct compose project `weed-spray-gz`. Do not start Gazebo on the shared bot VM. Offboard lidar-hold still open on #19 — do not invent PX4 params.
+Opt-in Gazebo profile (`compose.gazebo.yaml` / `make sitl-gz`): `px4io/px4-sitl-gazebo` + `gz_x500_lidar_down` (repo lidar+cam overlay) + MediaMTX `udp+rtp://127.0.0.1:5600` with H264 PT 96 `rtpSDP` → `8554/cam`. Distinct compose project `weed-spray-gz`. Do not start Gazebo on the shared bot VM. Offboard lidar AGL hold shipped via [#19](https://github.com/bi21an5a1b07-bot/weed-spray/issues/19) (`make backend-gz`); do not invent PX4 params.
 
 ## SITL vs hardware
 
@@ -135,7 +135,7 @@ Opt-in Gazebo profile (`compose.gazebo.yaml` / `make sitl-gz`): `px4io/px4-sitl-
 
 ## Do not start unless asked
 
-YOLO training, companion Pi image, live `weed-spray-accept` against PX4, wiki ingest, Gazebo lidar profile.
+YOLO training, companion Pi image, live `weed-spray-accept` against PX4, wiki ingest, Gazebo lidar profile, Unreal / Project AirSim (spike only: [`docs/sitl-airsim.md`](docs/sitl-airsim.md), issue #66).
 
 ## Docs to open first
 

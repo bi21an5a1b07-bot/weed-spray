@@ -1,6 +1,6 @@
 # SITL
 
-Contract: `bot_files/sitl_loop.md`. Default compose: `compose.yaml` (SIH). Opt-in Gazebo: `compose.gazebo.yaml`.
+Contract: `bot_files/sitl_loop.md`. Default compose: `compose.yaml` (SIH). Opt-in Gazebo: `compose.gazebo.yaml`. Project AirSim is a spike only ([sitl-airsim.md](sitl-airsim.md), issue #66) and does not replace either path.
 
 ## Images (default SIH)
 
