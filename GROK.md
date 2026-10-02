@@ -135,7 +135,7 @@ Opt-in Gazebo profile (`compose.gazebo.yaml` / `make sitl-gz`): `px4io/px4-sitl-
 
 ## Do not start unless asked
 
-YOLO training, companion Pi image, live `weed-spray-accept` against PX4, wiki ingest, Gazebo lidar profile.
+YOLO training, companion Pi image, live `weed-spray-accept` against PX4, wiki ingest, Gazebo lidar profile, Unreal / Project AirSim (spike only: [`docs/sitl-airsim.md`](docs/sitl-airsim.md), issue #66).
 
 ## Docs to open first
 
